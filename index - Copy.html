@@ -1,0 +1,3685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#14141f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<title>ChordPad Pro — Ultimate Chord Player</title>
+<!-- MediaPipe Hands & Camera for TikTok Finger Gesture Tracking -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #14141f;
+  --surface2: #1e1e2e;
+  --surface3: #282840;
+  --accent: #7c5cfc;
+  --accent2: #5ce1e6;
+  --accent3: #ff6b9d;
+  --text: #e8e8f0;
+  --text2: #8888aa;
+  --border: #2a2a40;
+  --success: #4caf50;
+  --warning: #ff9800;
+  --danger: #f44336;
+  --radius: 12px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); overflow-x:hidden; min-height:100vh; }
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:var(--surface); }
+::-webkit-scrollbar-thumb { background:var(--accent); border-radius:3px; }
+
+/* TikTok Gesture Studio Styles */
+.gesture-studio {
+  background: linear-gradient(145deg, rgba(28, 18, 48, 0.96), rgba(15, 15, 26, 0.98));
+  border: 2px solid var(--accent);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 32px rgba(124, 92, 252, 0.25), 0 0 16px rgba(255, 0, 119, 0.2);
+  transition: all 0.3s ease;
+  position: relative;
+}
+.gesture-studio-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.gesture-studio-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.1em;
+  font-weight: 700;
+  background: linear-gradient(90deg, #ff0077, #7c5cfc, #00e5ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.gesture-badge {
+  background: rgba(255, 0, 119, 0.15);
+  border: 1px solid #ff0077;
+  color: #ff529c;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.7em;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.gesture-content-grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 960px) {
+  .gesture-content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.cam-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid var(--border);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+}
+.cam-video {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+.cam-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(-1);
+}
+.cam-overlay-hud {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+.hud-status-pill {
+  background: rgba(10, 10, 16, 0.82);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 0.72em;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.hud-detected-banner {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  background: rgba(15, 12, 28, 0.9);
+  backdrop-filter: blur(8px);
+  border: 1.5px solid var(--accent2);
+  border-radius: 10px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  animation: hudPulse 1.5s infinite alternate;
+}
+@keyframes hudPulse {
+  0% { border-color: var(--accent); box-shadow: 0 0 10px rgba(124,92,252,0.3); }
+  100% { border-color: var(--accent2); box-shadow: 0 0 16px rgba(92,225,230,0.5); }
+}
+.hud-detected-text {
+  font-size: 1.05em;
+  font-weight: 800;
+  color: #fff;
+}
+.hud-chord-pill {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #000;
+  font-weight: 800;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.9em;
+  letter-spacing: 0.5px;
+}
+.gesture-control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.gesture-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+.gesture-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.gesture-card.active-match {
+  border-color: #ff0077;
+  background: rgba(255, 0, 119, 0.18);
+  box-shadow: 0 0 14px rgba(255,0,119,0.35);
+  transform: scale(1.03);
+}
+.gesture-card-label {
+  font-size: 0.74em;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+.gesture-card select {
+  background: var(--surface3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 0.8em;
+  width: 100%;
+}
+
+/* Header */
+.header { background:var(--surface); border-bottom:1px solid var(--border); padding:12px 24px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; position:sticky; top:0; z-index:100; }
+.logo { font-size:1.4em; font-weight:800; background:linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.header-controls { display:flex; align-items:center; gap:16px; flex-wrap:wrap; flex:1; }
+.control-group { display:flex; align-items:center; gap:8px; background:var(--surface2); padding:6px 12px; border-radius:8px; border:1px solid var(--border); }
+.control-group label { font-size:0.75em; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap; }
+.control-group select, .control-group input[type="number"] { background:var(--surface3); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:0.85em; outline:none; }
+.control-group select:focus, .control-group input:focus { border-color:var(--accent); }
+.control-group input[type="number"] { width:60px; }
+.control-group input[type="range"] { width:80px; accent-color:var(--accent); }
+.btn { background:var(--accent); color:#fff; border:none; border-radius:8px; padding:8px 16px; cursor:pointer; font-size:0.85em; font-weight:600; transition:all 0.2s; white-space:nowrap; }
+.btn:hover { filter:brightness(1.2); transform:translateY(-1px); }
+.btn:active { transform:translateY(0); }
+.btn.secondary { background:var(--surface3); border:1px solid var(--border); }
+.btn.danger { background:var(--danger); }
+.btn.success { background:var(--success); }
+.btn.small { padding:4px 10px; font-size:0.75em; }
+.btn.active-toggle { background:var(--success); box-shadow:0 0 12px rgba(76,175,80,0.4); }
+
+/* Main Layout */
+.main { display:grid; grid-template-columns:1fr 320px; gap:0; min-height:calc(100vh - 56px); }
+.pad-area { padding:20px; overflow-y:auto; }
+.side-panel { background:var(--surface); border-left:1px solid var(--border); padding:16px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; }
+
+/* Pads Grid */
+.pads-grid { display:grid; gap:12px; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); }
+.pad { background:var(--surface2); border:2px solid var(--border); border-radius:var(--radius); padding:12px; cursor:pointer; transition:all 0.15s; position:relative; user-select:none; min-height:100px; display:flex; flex-direction:column; justify-content:space-between; }
+.pad:hover { border-color:var(--accent); transform:translateY(-2px); box-shadow:var(--shadow); }
+.pad.playing { border-color:var(--accent2); background:linear-gradient(135deg, rgba(124,92,252,0.15), rgba(92,225,230,0.15)); box-shadow:0 0 20px rgba(92,225,230,0.3); animation:pulse 0.3s ease-out; }
+@keyframes pulse { 0%{transform:scale(1.05)} 100%{transform:scale(1)} }
+.pad-chord { font-size:1.2em; font-weight:700; color:var(--text); }
+.pad-notes { font-size:0.65em; color:var(--text2); margin-top:4px; }
+.pad-key { position:absolute; top:6px; right:8px; font-size:0.65em; background:var(--surface3); color:var(--accent2); padding:2px 6px; border-radius:4px; font-family:monospace; }
+.pad-actions { display:flex; gap:4px; margin-top:8px; }
+.pad-actions button { background:var(--surface3); border:1px solid var(--border); color:var(--text2); border-radius:4px; padding:2px 6px; font-size:0.65em; cursor:pointer; }
+.pad-actions button:hover { border-color:var(--accent); color:var(--text); }
+.pad.add-pad { border-style:dashed; border-color:var(--border); display:flex; align-items:center; justify-content:center; opacity:0.6; }
+.pad.add-pad:hover { opacity:1; border-color:var(--accent); }
+.pad.add-pad span { font-size:2em; color:var(--text2); }
+
+/* Side Panel Sections */
+.panel-section { background:var(--surface2); border-radius:var(--radius); padding:14px; border:1px solid var(--border); }
+.panel-section h3 { font-size:0.85em; color:var(--accent2); margin-bottom:10px; text-transform:uppercase; letter-spacing:1px; display:flex; align-items:center; gap:6px; }
+.panel-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.panel-row label { font-size:0.8em; color:var(--text2); }
+.panel-row input[type="range"] { width:100px; accent-color:var(--accent); }
+.panel-row select { background:var(--surface3); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:3px 6px; font-size:0.8em; }
+.panel-row .value { font-size:0.8em; color:var(--accent2); min-width:35px; text-align:right; font-family:monospace; }
+
+/* BPM Visualizer */
+.bpm-display { text-align:center; margin:8px 0; }
+.bpm-value { font-size:2em; font-weight:800; color:var(--accent); font-family:monospace; }
+.bpm-dot { width:12px; height:12px; border-radius:50%; background:var(--border); display:inline-block; margin:4px 2px; transition:background 0.1s; }
+.bpm-dot.active { background:var(--accent); box-shadow:0 0 8px var(--accent); }
+
+/* Bass Section */
+.bass-pattern { display:flex; gap:4px; flex-wrap:wrap; margin-top:8px; }
+.bass-step { width:28px; height:28px; border-radius:4px; background:var(--surface3); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:0.6em; cursor:pointer; color:var(--text2); }
+.bass-step.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+.bass-step.current { box-shadow:0 0 8px var(--accent2); border-color:var(--accent2); }
+
+/* Guitar Section */
+.guitar-strings { display:flex; flex-direction:column; gap:3px; margin:8px 0; padding:8px; background:var(--surface3); border-radius:8px; }
+.guitar-string { height:3px; border-radius:2px; transition:all 0.15s; }
+.guitar-string:nth-child(1) { background:linear-gradient(90deg,#ffd700,#ff8c00); height:2px; }
+.guitar-string:nth-child(2) { background:linear-gradient(90deg,#ffd700,#ff8c00); height:2px; }
+.guitar-string:nth-child(3) { background:linear-gradient(90deg,#c0c0c0,#808080); }
+.guitar-string:nth-child(4) { background:linear-gradient(90deg,#c0c0c0,#808080); }
+.guitar-string:nth-child(5) { background:linear-gradient(90deg,#c0c0c0,#808080); height:4px; }
+.guitar-string:nth-child(6) { background:linear-gradient(90deg,#c0c0c0,#808080); height:5px; }
+.guitar-string.vibrate { animation:vibrate 0.1s ease-in-out 3; }
+@keyframes vibrate { 0%,100%{transform:translateY(0)} 50%{transform:translateY(2px)} }
+
+/* Modal */
+.modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+.modal-overlay.show { display:flex; }
+.modal { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:24px; width:90%; max-width:600px; max-height:85vh; overflow-y:auto; box-shadow:0 8px 48px rgba(0,0,0,0.6); }
+.modal h2 { font-size:1.2em; margin-bottom:16px; color:var(--accent2); }
+.modal-close { position:absolute; top:12px; right:16px; background:none; border:none; color:var(--text2); font-size:1.5em; cursor:pointer; }
+.modal .form-group { margin-bottom:14px; }
+.modal .form-group label { display:block; font-size:0.8em; color:var(--text2); margin-bottom:4px; }
+.modal .form-group input, .modal .form-group select { width:100%; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 12px; font-size:0.9em; }
+.modal .form-group input:focus, .modal .form-group select:focus { border-color:var(--accent); outline:none; }
+.chord-search-results { max-height:200px; overflow-y:auto; margin-top:8px; }
+.chord-search-item { padding:8px 12px; cursor:pointer; border-radius:6px; display:flex; justify-content:space-between; align-items:center; }
+.chord-search-item:hover { background:var(--surface3); }
+.chord-search-item .chord-name { font-weight:600; }
+.chord-search-item .chord-notes { font-size:0.8em; color:var(--text2); }
+
+/* Image Upload Area */
+.upload-area { border:2px dashed var(--border); border-radius:var(--radius); padding:24px; text-align:center; cursor:pointer; transition:all 0.2s; margin:10px 0; }
+.upload-area:hover { border-color:var(--accent); background:rgba(124,92,252,0.05); }
+.upload-area input { display:none; }
+.upload-area .icon { font-size:2em; margin-bottom:8px; }
+.upload-preview { max-width:100%; max-height:150px; border-radius:8px; margin-top:10px; }
+.detected-chords { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.detected-chord { background:var(--accent); color:#fff; padding:4px 10px; border-radius:6px; font-size:0.85em; cursor:pointer; }
+.detected-chord:hover { filter:brightness(1.2); }
+
+/* Keybind Setting */
+.keybind-input { background:var(--surface3); border:2px solid var(--border); border-radius:8px; padding:8px 14px; color:var(--accent2); font-family:monospace; font-size:1em; text-align:center; cursor:pointer; min-width:60px; }
+.keybind-input.listening { border-color:var(--accent); animation:blink 1s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+/* Touch & Tap Optimizations */
+.pad {
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.btn, select, input, .tab, .mobile-nav-item {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Mobile Navigation Bar */
+.mobile-nav-bar {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: rgba(20, 20, 31, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid var(--border);
+  z-index: 200;
+  align-items: center;
+  justify-content: space-around;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.6);
+}
+.mobile-nav-item {
+  background: none;
+  border: none;
+  color: var(--text2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  flex: 1;
+  height: 100%;
+  padding: 6px 0;
+  transition: all 0.2s;
+}
+.mobile-nav-item .nav-icon { font-size: 1.25em; line-height: 1; transition: transform 0.2s; }
+.mobile-nav-item .nav-label { font-size: 0.68em; font-weight: 700; letter-spacing: 0.2px; }
+.mobile-nav-item.active {
+  color: var(--accent2);
+}
+.mobile-nav-item.active .nav-icon {
+  transform: scale(1.18);
+  filter: drop-shadow(0 0 6px var(--accent));
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .mobile-nav-bar { display: flex; }
+  .status-bar { display: none; }
+  
+  .header {
+    padding: 8px 12px;
+    gap: 8px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header .logo { font-size: 1.15em; }
+  
+  /* Hide non-essential desktop header widgets on small phone screens */
+  .header-controls .control-group:has(#padCount),
+  .header-controls .control-group:has(#reverbMix),
+  .header-controls .control-group:has(#octave) {
+    display: none;
+  }
+  .header-controls {
+    justify-content: flex-end;
+    gap: 6px;
+  }
+  .header-controls .control-group {
+    padding: 4px 8px;
+  }
+  .header-controls select {
+    max-width: 110px;
+    font-size: 0.78em;
+  }
+  .header-controls input[type="range"] {
+    width: 50px;
+  }
+  #gestureCamBtn {
+    padding: 6px 10px;
+    font-size: 0.78em;
+  }
+
+  .main {
+    display: block;
+    min-height: auto;
+    padding-bottom: 75px; /* space for mobile bottom bar */
+  }
+
+  /* Pad Area on Mobile */
+  .pad-area {
+    padding: 10px;
+  }
+  .pads-grid {
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 8px;
+  }
+  .pad {
+    min-height: 82px;
+    padding: 8px 6px;
+    border-radius: 10px;
+  }
+  .pad-chord { font-size: 1.05em; }
+  .pad-notes { font-size: 0.58em; }
+  .pad-key { font-size: 0.55em; padding: 1px 4px; top: 4px; right: 5px; }
+  .pad-actions button { padding: 2px 4px; font-size: 0.6em; }
+
+  /* Gesture Studio on Mobile */
+  .gesture-studio {
+    padding: 12px;
+    border-radius: 12px;
+  }
+  .gesture-content-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .cam-wrapper {
+    max-height: 220px;
+    aspect-ratio: 16 / 9;
+  }
+  .gesture-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Side Panel sections on mobile */
+  .side-panel {
+    border-left: none;
+    padding: 12px;
+    display: none; /* Controlled by mobile tabs */
+  }
+  .side-panel.mobile-visible {
+    display: flex;
+  }
+  .side-panel[data-mobile-view="guitar"] #panelBpm,
+  .side-panel[data-mobile-view="guitar"] #panelVisualizer,
+  .side-panel[data-mobile-view="guitar"] #panelEffects {
+    display: none !important;
+  }
+  .side-panel[data-mobile-view="bpm"] #panelBass,
+  .side-panel[data-mobile-view="bpm"] #panelGuitar {
+    display: none !important;
+  }
+
+  /* Modals on Mobile */
+  .modal {
+    width: 95%;
+    max-height: 88vh;
+    padding: 16px;
+    border-radius: 14px;
+  }
+}
+
+/* Tablet & Medium Screen Adaptations */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .main {
+    grid-template-columns: 1fr 280px;
+  }
+  .pads-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">🎵 ChordPad Pro</div>
+  <div class="header-controls">
+    <div class="control-group">
+      <label>Engine</label>
+      <select id="synthEngine">
+        <option value="synth">🎹 Synth</option>
+        <option value="piano">🎹 Piano</option>
+        <option value="epiano">🎹 Electric Piano</option>
+        <option value="organ">🎹 Organ</option>
+        <option value="guitar">🎸 Acoustic Guitar</option>
+        <option value="eguitar">🎸 Electric Guitar</option>
+        <option value="lofi">🌙 Lo-Fi</option>
+        <option value="pad">🌊 Ambient Pad</option>
+        <option value="strings">🎻 Strings</option>
+        <option value="bell">🔔 Bell</option>
+        <option value="brass">🎺 Brass</option>
+        <option value="beep">📟 Beep</option>
+        <option value="8bit">👾 8-Bit</option>
+        <option value="pluck">🪕 Pluck</option>
+        <option value="kalimba">🪘 Kalimba</option>
+        <option value="marimba">🥁 Marimba</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label>Volume</label>
+      <input type="range" id="masterVolume" min="0" max="100" value="70">
+      <span class="value" id="volDisplay">70%</span>
+    </div>
+    <div class="control-group">
+      <label>Octave</label>
+      <input type="number" id="octave" min="1" max="6" value="3">
+    </div>
+    <div class="control-group">
+      <label>Pads</label>
+      <input type="number" id="padCount" min="4" max="64" value="16">
+      <button class="btn small" onclick="updatePadCount()">Apply</button>
+    </div>
+    <div class="control-group">
+      <label>Reverb</label>
+      <input type="range" id="reverbMix" min="0" max="100" value="30">
+    </div>
+    <button class="btn" id="gestureCamBtn" onclick="toggleGestureCam()" style="background:linear-gradient(135deg,#ff0055,#7c5cfc);box-shadow:0 0 14px rgba(255,0,85,0.35);font-weight:700;display:flex;align-items:center;gap:6px;">
+      <span>🖐️</span> <span id="gestureBtnText">TikTok Cam: OFF</span>
+    </button>
+    <button class="btn" onclick="openAddChordModal()">+ Add Chord</button>
+    <button class="btn secondary" onclick="openSettingsModal()">⚙ Settings</button>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="main">
+  <!-- Pads Area -->
+  <div class="pad-area">
+    <!-- TikTok Gesture Studio (Collapsible, zero conflict with pads) -->
+    <div id="gestureStudio" class="gesture-studio" style="display:none;">
+      <div class="gesture-studio-header">
+        <div class="gesture-studio-title">
+          <span>🖐️ TikTok Finger Chord Studio</span>
+          <span class="gesture-badge">AI LIVE VISION</span>
+          <span id="gestureStatusPill" class="hud-status-pill" style="margin-left:6px;">Kamera Standby</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <select id="gesturePlayMode" onchange="updateGestureMode()" style="background:var(--surface3);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:0.8em;font-weight:600;">
+            <option value="single">🖐️ Mode 1: 1 Tangan (Jari = Chord Otomatis)</option>
+            <option value="airguitar">🎸 Mode 2: 2 Tangan (TikTok Air Guitar)</option>
+            <option value="strumOnPose">⚡ Mode 3: Petikan Cepat (Genjreng saat pose baru)</option>
+          </select>
+          <button class="btn small secondary" onclick="switchCameraFacing()" title="Ganti Kamera Depan/Belakang">🔄 Kamera</button>
+          <button class="btn small danger" onclick="toggleGestureCam()">✕ Tutup</button>
+        </div>
+      </div>
+
+      <div class="gesture-content-grid">
+        <!-- Live Camera View with Canvas & HUD -->
+        <div class="cam-box-col">
+          <div class="cam-wrapper">
+            <video id="gestureVideo" class="cam-video" playsinline muted autoplay></video>
+            <canvas id="gestureCanvas" class="cam-canvas"></canvas>
+            
+            <div class="cam-overlay-hud">
+              <div class="hud-status-pill" id="camFpsBadge">
+                <span class="status-dot" style="background:var(--success);"></span> <span id="fpsCounterVal">30 FPS</span>
+              </div>
+              <div class="hud-status-pill" id="handsCountBadge">0 Tangan</div>
+            </div>
+
+            <div class="hud-detected-banner" id="hudDetectedBanner">
+              <div>
+                <div style="font-size:0.65em;color:var(--text2);text-transform:uppercase;letter-spacing:1px;">Gerakan Jari Terdeteksi</div>
+                <div class="hud-detected-text" id="hudGestureName">Menunggu Tangan...</div>
+              </div>
+              <div class="hud-chord-pill" id="hudChordDisplay">—</div>
+            </div>
+          </div>
+
+          <!-- Strum visual indicator for 2-hands air guitar -->
+          <div id="airGuitarStrumBar" style="display:none;margin-top:8px;padding:8px 12px;background:var(--surface3);border-radius:8px;border:1px solid var(--border);align-items:center;justify-content:space-between;">
+            <div style="font-size:0.75em;color:var(--text2);">🎸 Kiri: <strong id="leftHandChordLabel" style="color:var(--accent2);">C</strong> | Kanan: <strong id="rightHandActionLabel" style="color:var(--accent3);">Siap Strum</strong></div>
+            <div id="strumFlashBadge" style="font-size:0.7em;font-weight:700;padding:2px 8px;border-radius:4px;background:var(--surface);color:var(--text2);">IDLE</div>
+          </div>
+        </div>
+
+        <!-- Gesture Controls & Mappings -->
+        <div class="gesture-control-panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+            <div style="font-size:0.82em;color:var(--accent2);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Atur Chord untuk Setiap Pose Jari</div>
+            <button class="btn small secondary" onclick="resetGestureMappingsToPads()" title="Samakan dengan pad yang ada">Sinkron ke Chord Pad</button>
+          </div>
+
+          <!-- Gesture to Chord mapping cards -->
+          <div class="gesture-cards" id="gestureCardsContainer"></div>
+
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;padding-top:10px;border-top:1px solid var(--border);">
+            <div style="flex:1;min-width:140px;">
+              <label style="font-size:0.72em;color:var(--text2);display:block;margin-bottom:2px;">Sensitivitas Deteksi</label>
+              <input type="range" id="gestureSensitivity" min="3" max="10" value="7" style="width:100%;accent-color:var(--accent);" oninput="updateGestureSensitivity(this.value)">
+            </div>
+            <div style="flex:1;min-width:140px;">
+              <label style="font-size:0.72em;color:var(--text2);display:block;margin-bottom:2px;">Sustain saat Jari Ditahan</label>
+              <select id="gestureSustainBehavior" style="width:100%;background:var(--surface3);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:0.8em;">
+                <option value="sustain">Bunyi Panjang (Sustain selama pose ditahan)</option>
+                <option value="strum">Genjreng Sekali (One-shot strum)</option>
+                <option value="arpeggio">Petikan Arpeggio Cepat</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="font-size:0.75em;color:var(--text2);background:rgba(124,92,252,0.1);padding:8px 12px;border-radius:8px;border-left:3px solid var(--accent);line-height:1.4;">
+            💡 <strong>Panduan Tren TikTok:</strong> Tunjukkan 1 s/d 5 jari ke arah kamera untuk langsung memainkan chord. Bentuk kepalan tangan ✊ kapan saja untuk langsung menghentikan suara (Mute).
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pads-grid" id="padsGrid"></div>
+  </div>
+
+  <!-- Side Panel -->
+  <div class="side-panel" id="sidePanel">
+    <!-- BPM Section -->
+    <div class="panel-section" id="panelBpm">
+      <h3>⏱ BPM / Tempo</h3>
+      <div class="bpm-display">
+        <div class="bpm-value" id="bpmValue">120</div>
+        <div>BPM</div>
+        <div style="margin-top:8px">
+          <span class="bpm-dot" id="beat0"></span>
+          <span class="bpm-dot" id="beat1"></span>
+          <span class="bpm-dot" id="beat2"></span>
+          <span class="bpm-dot" id="beat3"></span>
+        </div>
+      </div>
+      <div class="panel-row">
+        <label>Tempo</label>
+        <input type="range" id="bpmSlider" min="40" max="240" value="120" oninput="updateBPM(this.value)">
+        <input type="number" id="bpmInput" min="40" max="240" value="120" style="width:50px;background:var(--surface3);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:0.8em" onchange="updateBPM(this.value)">
+      </div>
+      <div class="panel-row">
+        <label>Time Sig</label>
+        <select id="timeSig" onchange="updateTimeSig()">
+          <option value="4">4/4</option>
+          <option value="3">3/4</option>
+          <option value="6">6/8</option>
+          <option value="5">5/4</option>
+        </select>
+      </div>
+      <button class="btn small" id="metronomeBtn" onclick="toggleMetronome()">🔇 Metronome</button>
+    </div>
+
+    <!-- Visualizer -->
+    <div class="panel-section" id="panelVisualizer">
+      <h3>📊 Visualizer</h3>
+      <div class="visualizer">
+        <canvas id="visualizerCanvas"></canvas>
+      </div>
+      <div class="volume-meter"><div class="volume-meter-fill" id="volumeMeter"></div></div>
+    </div>
+
+    <!-- Bass Section -->
+    <div class="panel-section" id="panelBass">
+      <h3>🎸 Auto Bass</h3>
+      <div class="panel-row">
+        <label>Enable</label>
+        <button class="btn small" id="bassToggle" onclick="toggleBass()">OFF</button>
+      </div>
+      <div class="panel-row">
+        <label>Root</label>
+        <select id="bassRoot">
+          <option>C</option><option>C#</option><option>D</option><option>D#</option>
+          <option>E</option><option>F</option><option>F#</option><option>G</option>
+          <option>G#</option><option>A</option><option>A#</option><option>B</option>
+        </select>
+      </div>
+      <div class="panel-row">
+        <label>Pattern</label>
+        <select id="bassPattern" onchange="updateBassPattern()">
+          <option value="quarter">Quarter Notes</option>
+          <option value="eighth">Eighth Notes</option>
+          <option value="walking">Walking Bass</option>
+          <option value="octave">Octave Bounce</option>
+          <option value="fifths">Root-Fifth</option>
+          <option value="reggae">Reggae</option>
+          <option value="funk">Funk</option>
+        </select>
+      </div>
+      <div class="panel-row">
+        <label>Volume</label>
+        <input type="range" id="bassVolume" min="0" max="100" value="50">
+        <span class="value" id="bassVolDisplay">50%</span>
+      </div>
+      <div class="panel-row">
+        <label>Sound</label>
+        <select id="bassSound">
+          <option value="sub">Sub Bass</option>
+          <option value="finger">Finger Bass</option>
+          <option value="slap">Slap Bass</option>
+          <option value="synth">Synth Bass</option>
+          <option value="upright">Upright Bass</option>
+        </select>
+      </div>
+      <div class="bass-pattern" id="bassSteps"></div>
+    </div>
+
+    <!-- Guitar FX Section -->
+    <div class="panel-section" id="panelGuitar">
+      <h3>🎸 Guitar FX</h3>
+      <div class="guitar-strings" id="guitarStrings">
+        <div class="guitar-string"></div><div class="guitar-string"></div>
+        <div class="guitar-string"></div><div class="guitar-string"></div>
+        <div class="guitar-string"></div><div class="guitar-string"></div>
+      </div>
+      <div class="panel-row">
+        <label>Mode</label>
+        <select id="guitarMode">
+          <option value="block">Block Chord</option>
+          <option value="strumDown">Strum Down</option>
+          <option value="strumUp">Strum Up</option>
+          <option value="strumAlt">Alternating Strum</option>
+          <option value="pick">Fingerpick</option>
+          <option value="arpUp">Arpeggio Up</option>
+          <option value="arpDown">Arpeggio Down</option>
+          <option value="tremolo">Tremolo Pick</option>
+        </select>
+      </div>
+      <div class="panel-row">
+        <label>Strum/Pick Speed</label>
+        <input type="range" id="strumSpeed" min="10" max="200" value="60">
+        <span class="value" id="strumSpeedDisplay">60ms</span>
+      </div>
+      <div class="panel-row">
+        <label>Auto Rhythm</label>
+        <button class="btn small" id="autoRhythmBtn" onclick="toggleAutoRhythm()">OFF</button>
+      </div>
+      <div class="panel-row" id="rhythmPatternRow" style="display:none">
+        <label>Rhythm Pattern</label>
+        <select id="rhythmPattern">
+          <option value="ddu">D D U</option>
+          <option value="ddud">D D U D</option>
+          <option value="dduudu">D D U U D U</option>
+          <option value="folk">Folk (Bass+Strum)</option>
+          <option value="reggae">Reggae (Offbeat)</option>
+          <option value="arpeggio">Arpeggio Pattern</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Effects -->
+    <div class="panel-section" id="panelEffects">
+      <h3>🎛 Effects</h3>
+      <div class="panel-row">
+        <label>Delay</label>
+        <input type="range" id="delayMix" min="0" max="100" value="0">
+        <span class="value" id="delayDisplay">0%</span>
+      </div>
+      <div class="panel-row">
+        <label>Delay Time</label>
+        <input type="range" id="delayTime" min="50" max="1000" value="300">
+        <span class="value" id="delayTimeDisplay">300ms</span>
+      </div>
+      <div class="panel-row">
+        <label>Chorus</label>
+        <input type="range" id="chorusMix" min="0" max="100" value="0">
+        <span class="value" id="chorusDisplay">0%</span>
+      </div>
+      <div class="panel-row">
+        <label>Distortion</label>
+        <input type="range" id="distortion" min="0" max="100" value="0">
+        <span class="value" id="distortionDisplay">0%</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Status Bar -->
+<div class="status-bar">
+  <div><span class="status-dot"></span>Audio Engine Ready</div>
+  <div id="statusInfo">Press a pad or use keyboard shortcuts</div>
+</div>
+
+<!-- Mobile Bottom Navigation Bar -->
+<nav class="mobile-nav-bar" id="mobileNavBar">
+  <button class="mobile-nav-item active" id="mTab-pads" onclick="switchMobileTab('pads')">
+    <span class="nav-icon">🎹</span><span class="nav-label">Pads</span>
+  </button>
+  <button class="mobile-nav-item" id="mTab-cam" onclick="switchMobileTab('cam')">
+    <span class="nav-icon">🖐️</span><span class="nav-label">TikTok Cam</span>
+  </button>
+  <button class="mobile-nav-item" id="mTab-guitar" onclick="switchMobileTab('guitar')">
+    <span class="nav-icon">🎸</span><span class="nav-label">Gitar & Bass</span>
+  </button>
+  <button class="mobile-nav-item" id="mTab-bpm" onclick="switchMobileTab('bpm')">
+    <span class="nav-icon">⏱️</span><span class="nav-label">BPM & FX</span>
+  </button>
+  <button class="mobile-nav-item" id="mTab-menu" onclick="switchMobileTab('menu')">
+    <span class="nav-icon">⚙️</span><span class="nav-label">Menu</span>
+  </button>
+</nav>
+
+<!-- Add Chord Modal -->
+<div class="modal-overlay" id="addChordModal">
+  <div class="modal">
+    <h2>Add Chord to Pad</h2>
+    <div class="tabs">
+      <div class="tab active" onclick="switchAddTab('search')">Search</div>
+      <div class="tab" onclick="switchAddTab('custom')">Custom</div>
+      <div class="tab" onclick="switchAddTab('image')">Image Upload</div>
+    </div>
+
+    <div id="addTab-search">
+      <div class="form-group">
+        <label>Search Chord</label>
+        <input type="text" id="chordSearch" placeholder="e.g. Am7, Cmaj7, G#dim..." oninput="searchChords(this.value)">
+      </div>
+      <div class="chord-search-results" id="chordResults"></div>
+    </div>
+
+    <div id="addTab-custom" style="display:none">
+      <div class="form-group">
+        <label>Root Note</label>
+        <select id="customRoot">
+          <option>C</option><option>C#</option><option>D</option><option>D#</option>
+          <option>E</option><option>F</option><option>F#</option><option>G</option>
+          <option>G#</option><option>A</option><option>A#</option><option>B</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Chord Type</label>
+        <select id="customType"></select>
+      </div>
+      <button class="btn" onclick="addCustomChord()">Add to Pad</button>
+    </div>
+
+    <div id="addTab-image" style="display:none">
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('imageInput').click()">
+        <div class="icon">📷</div>
+        <div>Click or drag an image of chord notation</div>
+        <div style="font-size:0.75em;color:var(--text2);margin-top:4px">Supports chord sheets, tablatures, handwritten chords</div>
+        <input type="file" id="imageInput" accept="image/*" onchange="handleImageUpload(event)">
+      </div>
+      <img id="uploadPreview" class="upload-preview" style="display:none">
+      <div style="margin-top:10px">
+        <div class="form-group">
+          <label>Or type the chords you see in the image (comma separated)</label>
+          <input type="text" id="imageChordInput" placeholder="e.g. C, Am, F, G7">
+        </div>
+        <button class="btn" onclick="addChordsFromImage()">Add All Chords</button>
+      </div>
+      <div class="detected-chords" id="detectedChords"></div>
+    </div>
+
+    <div style="margin-top:16px;text-align:right">
+      <button class="btn secondary" onclick="closeModal('addChordModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <h2>⚙ Settings & Keybinds</h2>
+    <div class="tabs">
+      <div class="tab active" onclick="switchSettingsTab('keybinds')">Keybinds</div>
+      <div class="tab" onclick="switchSettingsTab('general')">General</div>
+      <div class="tab" onclick="switchSettingsTab('presets')">Presets</div>
+    </div>
+
+    <div id="settingsTab-keybinds">
+      <p style="font-size:0.8em;color:var(--text2);margin-bottom:12px">Click a key box then press any key to assign it to that pad.</p>
+      <div id="keybindsList"></div>
+    </div>
+
+    <div id="settingsTab-general" style="display:none">
+      <div class="form-group">
+        <label>Pad Columns (0=auto)</label>
+        <input type="number" id="padColumns" min="0" max="12" value="0" onchange="updatePadLayout()">
+      </div>
+      <div class="form-group">
+        <label>Sustain Mode</label>
+        <select id="sustainMode">
+          <option value="hold">Hold (release on key up)</option>
+          <option value="toggle">Toggle (press to start/stop)</option>
+          <option value="oneshot">One-Shot (fixed duration)</option>
+        </select>
+      </div>
+      <div class="form-group" id="oneshotDurationGroup" style="display:none">
+        <label>One-Shot Duration (ms)</label>
+        <input type="number" id="oneshotDuration" min="100" max="5000" value="500">
+      </div>
+      <div class="form-group">
+        <label>Theme</label>
+        <select id="theme" onchange="updateTheme(this.value)">
+          <option value="dark">Dark</option>
+          <option value="midnight">Midnight Blue</option>
+          <option value="purple">Purple Haze</option>
+          <option value="forest">Forest</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="settingsTab-presets" style="display:none">
+      <div class="form-group">
+        <label>Load Preset</label>
+        <select id="presetSelect">
+          <option value="">-- Select Preset --</option>
+          <option value="pop">Pop (C Am F G)</option>
+          <option value="blues">Blues (E7 A7 B7)</option>
+          <option value="jazz">Jazz Standards</option>
+          <option value="rock">Rock Power Chords</option>
+          <option value="lofi">Lo-Fi Chill</option>
+          <option value="bossa">Bossa Nova</option>
+          <option value="allMajor">All Major Chords</option>
+          <option value="allMinor">All Minor Chords</option>
+        </select>
+        <button class="btn small" style="margin-top:8px" onclick="loadPreset()">Load</button>
+      </div>
+      <div class="form-group">
+        <label>Save Current as Preset</label>
+        <input type="text" id="presetName" placeholder="Preset name">
+        <button class="btn small success" style="margin-top:8px" onclick="savePreset()">Save</button>
+      </div>
+      <div id="savedPresets"></div>
+    </div>
+
+    <div style="margin-top:16px;text-align:right">
+      <button class="btn secondary" onclick="closeModal('settingsModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========================================
+// CHORD DATABASE
+// ========================================
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const NOTE_FREQ = {};
+for (let oct = 0; oct <= 8; oct++) {
+  NOTE_NAMES.forEach((n, i) => {
+    const midi = 12 + oct * 12 + i;
+    NOTE_FREQ[n + oct] = 440 * Math.pow(2, (midi - 69) / 12);
+  });
+}
+
+const CHORD_TYPES = {
+  'maj':     { name:'Major',        intervals:[0,4,7] },
+  'min':     { name:'Minor',        intervals:[0,3,7] },
+  'dim':     { name:'Diminished',   intervals:[0,3,6] },
+  'aug':     { name:'Augmented',    intervals:[0,4,8] },
+  '7':       { name:'Dominant 7th', intervals:[0,4,7,10] },
+  'maj7':    { name:'Major 7th',    intervals:[0,4,7,11] },
+  'min7':    { name:'Minor 7th',    intervals:[0,3,7,10] },
+  'dim7':    { name:'Diminished 7th',intervals:[0,3,6,9] },
+  'aug7':    { name:'Augmented 7th', intervals:[0,4,8,10] },
+  'minMaj7': { name:'Minor Major 7th',intervals:[0,3,7,11] },
+  'hdim7':   { name:'Half-Dim 7th', intervals:[0,3,6,10] },
+  'sus2':    { name:'Suspended 2nd',intervals:[0,2,7] },
+  'sus4':    { name:'Suspended 4th',intervals:[0,5,7] },
+  '7sus4':   { name:'7sus4',        intervals:[0,5,7,10] },
+  '6':       { name:'Major 6th',    intervals:[0,4,7,9] },
+  'min6':    { name:'Minor 6th',    intervals:[0,3,7,9] },
+  '9':       { name:'Dominant 9th', intervals:[0,4,7,10,14] },
+  'maj9':    { name:'Major 9th',    intervals:[0,4,7,11,14] },
+  'min9':    { name:'Minor 9th',    intervals:[0,3,7,10,14] },
+  'add9':    { name:'Add 9',        intervals:[0,4,7,14] },
+  'madd9':   { name:'Minor Add 9',  intervals:[0,3,7,14] },
+  '11':      { name:'11th',         intervals:[0,4,7,10,14,17] },
+  'min11':   { name:'Minor 11th',   intervals:[0,3,7,10,14,17] },
+  '13':      { name:'13th',         intervals:[0,4,7,10,14,21] },
+  'min13':   { name:'Minor 13th',   intervals:[0,3,7,10,14,21] },
+  '5':       { name:'Power Chord',  intervals:[0,7] },
+  '7b5':     { name:'7 flat 5',     intervals:[0,4,6,10] },
+  '7#5':     { name:'7 sharp 5',    intervals:[0,4,8,10] },
+  '7b9':     { name:'7 flat 9',     intervals:[0,4,7,10,13] },
+  '7#9':     { name:'7 sharp 9',    intervals:[0,4,7,10,15] },
+  'maj7#11': { name:'Major 7 #11',  intervals:[0,4,7,11,18] },
+  'add11':   { name:'Add 11',       intervals:[0,4,7,17] },
+  '6/9':     { name:'6/9',          intervals:[0,4,7,9,14] },
+};
+
+function buildAllChords() {
+  const all = [];
+  NOTE_NAMES.forEach(root => {
+    Object.entries(CHORD_TYPES).forEach(([suffix, data]) => {
+      let displayName;
+      if (suffix === 'maj') displayName = root;
+      else if (suffix === 'min') displayName = root + 'm';
+      else displayName = root + suffix;
+      all.push({
+        name: displayName,
+        root: root,
+        type: suffix,
+        fullName: root + ' ' + data.name,
+        intervals: data.intervals,
+        notes: data.intervals.map(i => {
+          const idx = (NOTE_NAMES.indexOf(root) + i) % 12;
+          return NOTE_NAMES[idx];
+        })
+      });
+    });
+  });
+  return all;
+}
+const ALL_CHORDS = buildAllChords();
+
+function getChordFrequencies(root, intervals, octave) {
+  const rootIdx = NOTE_NAMES.indexOf(root);
+  return intervals.map(interval => {
+    const noteIdx = (rootIdx + interval) % 12;
+    const noteOctave = octave + Math.floor((rootIdx + interval) / 12);
+    const noteName = NOTE_NAMES[noteIdx] + noteOctave;
+    return NOTE_FREQ[noteName] || 440;
+  });
+}
+
+// ========================================
+// ========================================
+// AUDIO ENGINE
+// ========================================
+let audioCtx = null;
+let masterGain = null;
+let masterCompressor = null;
+let reverbNode = null;
+let reverbGain = null;
+let delayNode = null;
+let delayGain = null;
+let delayFeedback = null;
+let analyserNode = null;
+const activeSounds = {};
+
+function initAudio() {
+  if (audioCtx) {
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    return;
+  }
+
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  audioCtx = new AudioContextClass();
+
+  // Safety Master Compressor (Limiter) - prevents ear-piercing audio and browser DAC muting!
+  masterCompressor = audioCtx.createDynamicsCompressor();
+  masterCompressor.threshold.setValueAtTime(-6, audioCtx.currentTime);
+  masterCompressor.knee.setValueAtTime(6, audioCtx.currentTime);
+  masterCompressor.ratio.setValueAtTime(12, audioCtx.currentTime);
+  masterCompressor.attack.setValueAtTime(0.003, audioCtx.currentTime);
+  masterCompressor.release.setValueAtTime(0.2, audioCtx.currentTime);
+
+  masterGain = audioCtx.createGain();
+  const savedVol = document.getElementById('masterVolume') ? document.getElementById('masterVolume').value / 100 : 0.7;
+  masterGain.gain.value = savedVol;
+
+  analyserNode = audioCtx.createAnalyser();
+  analyserNode.fftSize = 256;
+
+  // Master bus routing: MasterGain -> Compressor -> Analyser -> Destination
+  masterGain.connect(masterCompressor);
+  masterCompressor.connect(analyserNode);
+  analyserNode.connect(audioCtx.destination);
+
+  // Reverb
+  try {
+    reverbNode = audioCtx.createConvolver();
+    const irLen = Math.floor(audioCtx.sampleRate * 1.8);
+    const irBuf = audioCtx.createBuffer(2, irLen, audioCtx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = irBuf.getChannelData(ch);
+      for (let i = 0; i < irLen; i++) {
+        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 2.2);
+      }
+    }
+    reverbNode.buffer = irBuf;
+
+    reverbGain = audioCtx.createGain();
+    const rMix = document.getElementById('reverbMix') ? document.getElementById('reverbMix').value / 100 : 0.3;
+    reverbGain.gain.value = rMix * 0.5;
+
+    window._reverbSend = audioCtx.createGain();
+    window._reverbSend.gain.value = 0.5;
+    window._reverbSend.connect(reverbNode);
+    reverbNode.connect(reverbGain);
+    reverbGain.connect(masterGain);
+    window._reverbGain = reverbGain;
+  } catch (e) {
+    console.warn('Reverb setup error:', e);
+  }
+
+  // Delay
+  try {
+    delayNode = audioCtx.createDelay(2.0);
+    delayNode.delayTime.value = 0.3;
+    delayGain = audioCtx.createGain();
+    delayGain.gain.value = 0;
+    delayFeedback = audioCtx.createGain();
+    delayFeedback.gain.value = 0.3;
+
+    delayNode.connect(delayFeedback);
+    delayFeedback.connect(delayNode);
+    delayNode.connect(delayGain);
+    delayGain.connect(masterGain);
+  } catch (e) {
+    console.warn('Delay setup error:', e);
+  }
+
+  // Watch for state changes
+  audioCtx.onstatechange = () => {
+    updateAudioStatus();
+  };
+  updateAudioStatus();
+
+  startVisualizer();
+}
+
+function updateAudioStatus() {
+  const statusInfo = document.getElementById('statusInfo');
+  const dot = document.querySelector('.status-dot');
+  if (!audioCtx) return;
+
+  if (audioCtx.state === 'running') {
+    if (dot) dot.style.background = 'var(--success)';
+    if (statusInfo && statusInfo.textContent.includes('suspended')) {
+      statusInfo.textContent = 'Audio Engine Active';
+    }
+  } else if (audioCtx.state === 'suspended') {
+    if (dot) dot.style.background = 'var(--warning)';
+    if (statusInfo) {
+      statusInfo.innerHTML = 'Audio suspended by browser. <a href="javascript:void(0)" onclick="resumeAudioNow()" style="color:var(--accent2);text-decoration:underline;font-weight:bold;">Click here to activate</a>';
+    }
+  }
+}
+
+function resumeAudioNow() {
+  if (audioCtx) {
+    audioCtx.resume().then(() => updateAudioStatus());
+  } else {
+    initAudio();
+  }
+}
+
+function makeDistortionCurve(amount) {
+  const n = 44100;
+  const curve = new Float32Array(n);
+  const k = Math.max(0, Math.min(amount * 50, 100));
+  if (k === 0) {
+    for (let i = 0; i < n; i++) curve[i] = (i * 2) / n - 1;
+    return curve;
+  }
+  const deg = Math.PI / 180;
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1;
+    // Guaranteed to stay strictly within [-1, 1]
+    curve[i] = Math.max(-1, Math.min(1, ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x))));
+  }
+  return curve;
+}
+
+// 16 High-Quality Synth Engines with Continuous Long Sustain
+function createSynthVoice(freq, engineType, time) {
+  const t = time || audioCtx.currentTime;
+  const nodes = [];
+  const output = audioCtx.createGain();
+  output.gain.value = 0;
+
+  switch(engineType) {
+    case 'synth': {
+      // Classic Rich Analog Synth with filter envelope and sustained body
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      osc1.type = 'sawtooth';
+      osc2.type = 'square';
+      osc1.frequency.setValueAtTime(freq, t);
+      osc2.frequency.setValueAtTime(freq * 1.002, t);
+
+      const flt = audioCtx.createBiquadFilter();
+      flt.type = 'lowpass';
+      flt.frequency.setValueAtTime(600, t);
+      flt.frequency.linearRampToValueAtTime(3200, t + 0.08);
+      flt.frequency.linearRampToValueAtTime(2200, t + 0.3);
+      flt.Q.value = 3;
+
+      const g1 = audioCtx.createGain(); g1.gain.value = 0.18;
+      const g2 = audioCtx.createGain(); g2.gain.value = 0.08;
+      osc1.connect(g1); g1.connect(flt);
+      osc2.connect(g2); g2.connect(flt);
+      flt.connect(output);
+
+      osc1.start(t);
+      osc2.start(t);
+      nodes.push(osc1, osc2);
+
+      output.gain.setValueAtTime(0, t);
+      output.gain.linearRampToValueAtTime(0.3, t + 0.03);
+      output.gain.linearRampToValueAtTime(0.24, t + 0.15); // Long sustain
+      break;
+    }
+
+    case 'piano': {
+      // Multi-harmonic acoustic piano with warm natural sustain
+      const harmonics = [1, 2, 3, 4, 5, 6];
+      harmonics.forEach((h) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = h % 2 === 0 ? 'sine' : 'triangle';
+        osc.frequency.setValueAtTime(freq * h, t);
+
+        const g = audioCtx.createGain();
+        const initialVol = 0.22 / Math.pow(h, 0.75);
+        const sustainVol = initialVol * 0.45; // Sustains long as requested
+
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(initialVol, t + 0.008);
+        g.gain.linearRampToValueAtTime(sustainVol, t + 0.4);
+
+        osc.connect(g);
+        g.connect(output);
+        osc.start(t);
+        nodes.push(osc);
+      });
+      output.gain.setValueAtTime(1, t);
+      break;
+    }
+
+    case 'epiano': {
+      // FM Electric Piano (Rhodes / DX7 style)
+      const carrier = audioCtx.createOscillator();
+      const carrier2 = audioCtx.createOscillator();
+      carrier.type = 'sine';
+      carrier2.type = 'triangle';
+      carrier.frequency.setValueAtTime(freq, t);
+      carrier2.frequency.setValueAtTime(freq * 2, t);
+
+      const modulator = audioCtx.createOscillator();
+      modulator.type = 'sine';
+      modulator.frequency.setValueAtTime(freq * 7, t);
+      const modGain = audioCtx.createGain();
+      modGain.gain.setValueAtTime(freq * 0.4, t);
+      modGain.gain.exponentialRampToValueAtTime(freq * 0.05, t + 0.8);
+      modulator.connect(modGain);
+      modGain.connect(carrier.frequency);
+
+      const g1 = audioCtx.createGain(); g1.gain.value = 0.25;
+      const g2 = audioCtx.createGain(); g2.gain.value = 0.08;
+      carrier.connect(g1); g1.connect(output);
+      carrier2.connect(g2); g2.connect(output);
+
+      carrier.start(t); carrier2.start(t); modulator.start(t);
+      nodes.push(carrier, carrier2, modulator);
+
+      output.gain.setValueAtTime(0, t);
+      output.gain.linearRampToValueAtTime(0.8, t + 0.01);
+      output.gain.linearRampToValueAtTime(0.5, t + 0.3); // Warm EP sustain
+      break;
+    }
+
+    case 'organ': {
+      // Hammond Drawbar Organ with rotary vibrato - full infinite sustain!
+      const drawbars = [1, 2, 3, 4, 6, 8];
+      const weights = [0.22, 0.16, 0.12, 0.09, 0.05, 0.03];
+      const vib = audioCtx.createOscillator();
+      vib.type = 'sine';
+      vib.frequency.setValueAtTime(5.8, t); // Vibrato speed
+      const vibGain = audioCtx.createGain();
+      vibGain.gain.setValueAtTime(freq * 0.004, t);
+      vib.connect(vibGain);
+      vib.start(t);
+      nodes.push(vib);
+
+      drawbars.forEach((h, i) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq * h, t);
+        vibGain.connect(osc.frequency);
+
+        const g = audioCtx.createGain();
+        g.gain.setValueAtTime(weights[i], t);
+        osc.connect(g);
+        g.connect(output);
+        osc.start(t);
+        nodes.push(osc);
+      });
+      output.gain.setValueAtTime(0, t);
+      output.gain.linearRampToValueAtTime(1, t + 0.02);
+      break;
+    }
+
+    case 'guitar': {
+      // Acoustic Guitar: Dual string oscillator + body filter resonance + continuous sustain
+      const oscFundamental = audioCtx.createOscillator();
+      const oscHarmonic = audioCtx.createOscillator();
+      oscFundamental.type = 'triangle';
+      oscHarmonic.type = 'sawtooth';
+      oscFundamental.frequency.setValueAtTime(freq, t);
+      oscHarmonic.frequency.setValueAtTime(freq * 2, t);
+
+      // Acoustic body lowpass filter
+      const flt = audioCtx.createBiquadFilter();
+      flt.type = 'lowpass';
+      flt.frequency.setValueAtTime(3600, t);
+      flt.frequency.linearRampToValueAtTime(1400, t + 0.12);
+      flt.frequency.linearRampToValueAtTime(900, t + 0.6);
+      flt.Q.value = 1.5;
+
+      // Body resonance peak
+      const bodyPeak = audioCtx.createBiquadFilter();
+      bodyPeak.type = 'peaking';
+      bodyPeak.frequency.setValueAtTime(220, t);
+      bodyPeak.gain.setValueAtTime(4, t);
+      bodyPeak.Q.value = 2;
+
+      const gFund = audioCtx.createGain(); gFund.gain.value = 0.28;
+      const gHarm = audioCtx.createGain(); gHarm.gain.value = 0.08;
+
+      oscFundamental.connect(gFund); gFund.connect(flt);
+      oscHarmonic.connect(gHarm); gHarm.connect(flt);
+      flt.connect(bodyPeak);
+      bodyPeak.connect(output);
+
+      oscFundamental.start(t);
+      oscHarmonic.start(t);
+      nodes.push(oscFundamental, oscHarmonic);
+
+      output.gain.setValueAtTime(0, t);
+      output.gain.linearRampToValueAtTime(0.4, t + 0.008);
+      output.gain.linearRampToValueAtTime(0.26, t + 0.25); // Keeps sustaining long while held!
+      break;
+    }
+
+    case 'eguitar': {
+      // Electric Guitar: Driven dual-sawtooth with cabinet resonance filter & warm sustain
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      osc1.type = 'sawtooth';
+      osc2.type = 'triangle';
+      osc1.frequency.setValueAtTime(freq, t);
+      osc2.frequency.setValueAtTime(freq * 1.002, t);
+
+      const cabFilter = audioCtx.createBiquadFilter();
+      cabFilter.type = 'lowpass';
+      cabFilter.frequency.setValueAtTime(2800, t);
+      cabFilter.Q.value = 2.5;
+
+      const dist = audioCtx.createWaveShaper();
+      dist.curve = makeDistortionCurve(0.35);
+
+      const g1 = audioCtx.createGain(); g1.gain.value = 0.2;
+      const g2 = audioCtx.createGain(); g2.gain.value = 0.15;
+      osc1.connect(g1); g1.connect(dist);
+      osc2.connect(g2); g2.connect(dist);
+      dist.connect(cabFilter);
+      cabFilter.connect(output);
+
+      osc1.start(t);
+      osc2.start(t);
+      nodes.push(osc1, osc2);
+
+      output.gain.setValueAtTime(0, t);
+      output.gain.linearRampToValueAtTime(0.35, t + 0.01);
+      output.gain.linearRampToValueAtTime(0.28, t + 0.15); // Long singing sustain
+      break;
+    }
+
+    case 'lofi': {
+      // Lo-Fi Warm Keys: Triangle + subtle tape wow/flutter + lowpass filter
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      osc1.type = 'triangle';
+      osc2.type = 'sine';
+      osc1.frequency.setValueAtTime(freq, t);
+      osc2.frequency.setValueAtTime(freq * 1.004, t);
+
+      // Tape wow LFO
+      const lfo = audioCtx.createOscillator();
+      lfo.frequency.setValueAtTime(0.8, t);
+      const lfoG = audioCtx.createGain();
+      lfoG.gain.setValueAtTime(freq * 0.003, t);
+      lfo.connect(lfoG);
+      lfoG.connect(osc1.frequency);
+      lfo.start(t);
+      nodes.push(lfo);
+
+      const flt = audioCtx.createBiquadFilter();
+      flt.type = 'lowpass';
+      flt.frequency.setValueAtTime(950, t);
+      flt.Q.value = 1.2;
+
+      const g1 = audioCtx.createGain(); g1.gain.value = 0.22;
+      const g2 = audioCtx.createGain(); g2.gain.value = 0.15;
+      osc1.connect(g1); g1.connect(flt);
+      osc2.connect(g2); g2.connect(flt);
+      flt.connect(output);
+
+      osc1.start(t);
+      osc2.start(t);
+      nodes.push(osc1, osc2);
+
+      output.gain.setValueAtTime(0, t);
+      output.gain.linearRampToValueAtTime(0.32, t + 0.04);
+      output.gain.linearRampToValueAtTime(0.25, t + 0.25);
+      break;
+    }
+
+    case 'pad': {
+      // Lush Ambient Pad: Detuned stacked sines with slow swell and infinite sustain
+      const detunes = [-7, -3, 0, 3, 7];
+      detunes.forEach((cents) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq * Math.pow(2, cents / 1200), t);
+
+        const flt = audioCtx.createBiquadFilter();
+        flt.type = 'lowpass';
+        flt.frequency.setValueAtTime(1400, t);
+
+        const g = audioCtx.createGain();
+        g.gain.value = 0.06;
+        osc.connect(flt);
+        flt.connect(g);
+        g.connect(output);
+        osc.start(t);
+        nodes.push(osc);
+      });
+      output.gain.setValueAtTime(0, t);
+      output.gain.linearRampToValueAtTime(0.32, t + 0.25);
+      output.gain.linearRampToValueAtTime(0.28, t + 0.5);
+      break;
+    }
+
+    case 'strings': {
+      // Orchestral Strings Ensemble: Multiple rich sawtooths with chorus detuning
+      const detunes = [-9, -4, 0, 4, 9];
+      detunes.forEach((cents) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq * Math.pow(2, cents / 1200), t);
+
+        const flt = audioCtx.createBiquadFilter();
+        flt.type = 'lowpass';
+        flt.frequency.setValueAtTime(2600, t);
+
+        const g = audioCtx.createGain();
+        g.gain.value = 0.055;
+        osc.connect(flt);
+        flt.connect(g);
+        g.connect(output);
+        osc.start(t);
+        nodes.push(osc);
+      });
+      output.gain.setValueAtTime(0, t);
+      output.gain.linearRampToValueAtTime(0.3, t + 0.15);
+      output.gain.linearRampToValueAtTime(0.25, t + 0.35);
+      break;
+    }
+
+    case 'bell': {
+      // Shimmering FM Bell with long ringing sustain
+      [1, 2.76, 5.4, 8.9].forEach((ratio, i) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq * ratio, t);
+        const g = audioCtx.createGain();
+        const initV = 0.18 / (i + 1);
+        const sustV = initV * 0.35;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(initV, t + 0.005);
+        g.gain.linearRampToValueAtTime(sustV, t + 0.3);
+        osc.connect(g);
+        g.connect(output);
+        osc.start(t);
+        nodes.push(osc);
+      });
+      output.gain.setValueAtTime(0.8, t);
+      break;
+    }
+
+    case 'brass': {
+      // Punchy Brass Section with expressive filter envelope
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      osc1.type = 'sawtooth';
+      osc2.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(freq, t);
+      osc2.frequency.setValueAtTime(freq * 1.003, t);
+
+      const flt = audioCtx.createBiquadFilter();
+      flt.type = 'lowpass';
+      flt.frequency.setValueAtTime(400, t);
+      flt.frequency.linearRampToValueAtTime(3200, t + 0.09);
+      flt.frequency.linearRampToValueAtTime(2100, t + 0.25);
+      flt.Q.value = 2.5;
+
+      const g = audioCtx.createGain(); g.gain.value = 0.16;
+      osc1.connect(g); osc2.connect(g);
+      g.connect(flt);
+      flt.connect(output);
+
+      osc1.start(t); osc2.start(t);
+      nodes.push(osc1, osc2);
+
+      output.gain.setValueAtTime(0, t);
+      output.gain.linearRampToValueAtTime(0.3, t + 0.03);
+      output.gain.linearRampToValueAtTime(0.24, t + 0.15);
+      break;
+    }
+
+    case 'beep': {
+      // Pure Retro Beep
+      const osc = audioCtx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(freq, t);
+      osc.connect(output);
+      osc.start(t);
+      nodes.push(osc);
+
+      output.gain.setValueAtTime(0, t);
+      output.gain.linearRampToValueAtTime(0.14, t + 0.01);
+      break;
+    }
+
+    case '8bit': {
+      // Authentic Chiptune 8-Bit Pulse
+      const osc = audioCtx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(Math.round(freq / 8) * 8, t);
+
+      const flt = audioCtx.createBiquadFilter();
+      flt.type = 'lowpass';
+      flt.frequency.setValueAtTime(3500, t);
+
+      osc.connect(flt);
+      flt.connect(output);
+      osc.start(t);
+      nodes.push(osc);
+
+      output.gain.setValueAtTime(0, t);
+      output.gain.linearRampToValueAtTime(0.16, t + 0.005);
+      break;
+    }
+
+    case 'pluck': {
+      // Plucked string with fast attack and warm sustain
+      const osc = audioCtx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t);
+
+      const flt = audioCtx.createBiquadFilter();
+      flt.type = 'lowpass';
+      flt.frequency.setValueAtTime(3200, t);
+      flt.frequency.linearRampToValueAtTime(700, t + 0.2);
+
+      osc.connect(flt);
+      flt.connect(output);
+      osc.start(t);
+      nodes.push(osc);
+
+      output.gain.setValueAtTime(0, t);
+      output.gain.linearRampToValueAtTime(0.35, t + 0.005);
+      output.gain.linearRampToValueAtTime(0.2, t + 0.2); // Warm sustain
+      break;
+    }
+
+    case 'kalimba': {
+      // African Thumb Piano (Kalimba): Sine fundamental + metallic chime + sustain
+      [1, 3, 6.2].forEach((h, i) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq * h, t);
+
+        const g = audioCtx.createGain();
+        const initV = 0.2 / Math.pow(h, 0.6);
+        const sustV = initV * 0.4;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(initV, t + 0.005);
+        g.gain.linearRampToValueAtTime(sustV, t + 0.2);
+
+        osc.connect(g);
+        g.connect(output);
+        osc.start(t);
+        nodes.push(osc);
+      });
+      output.gain.setValueAtTime(0.9, t);
+      break;
+    }
+
+    case 'marimba': {
+      // Wooden Marimba: Warm hollow resonant bars + steady sustain
+      [1, 4, 9.8].forEach((h, i) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = i === 0 ? 'sine' : 'triangle';
+        osc.frequency.setValueAtTime(freq * h, t);
+
+        const g = audioCtx.createGain();
+        const initV = 0.22 / Math.pow(h, 0.6);
+        const sustV = initV * 0.45;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(initV, t + 0.005);
+        g.gain.linearRampToValueAtTime(sustV, t + 0.2);
+
+        osc.connect(g);
+        g.connect(output);
+        osc.start(t);
+        nodes.push(osc);
+      });
+      output.gain.setValueAtTime(0.9, t);
+      break;
+    }
+  }
+
+  return { nodes, output, mainGain: output };
+}
+
+// Play a chord by padId or pad object
+function playChord(padId) {
+  initAudio();
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+
+  // Haptic feedback for tactile feel on mobile
+  if (navigator.vibrate) {
+    try { navigator.vibrate(12); } catch (_) {}
+  }
+
+  // Robust pad lookup: works with either pad.id (number/string) or array index!
+  const pad = pads.find(p => p.id == padId) || pads[padId];
+  if (!pad) return;
+
+  const actualId = pad.id !== undefined ? pad.id : padId;
+
+  // If already playing this pad, smoothly stop previous instance first so sound never cuts or hangs
+  if (activeSounds[actualId]) {
+    stopChord(actualId);
+  }
+
+  const engine = document.getElementById('synthEngine').value;
+  const octave = parseInt(document.getElementById('octave').value) || 3;
+  const freqs = getChordFrequencies(pad.root, pad.intervals, octave);
+  const guitarMode = document.getElementById('guitarMode').value;
+  const strumSpeed = parseInt(document.getElementById('strumSpeed').value) || 60;
+
+  const voices = [];
+  const outputMix = audioCtx.createGain();
+  outputMix.gain.setValueAtTime(1, audioCtx.currentTime);
+
+  const isStrum = guitarMode !== 'block';
+
+  if (isStrum) {
+    let noteOrder = [...freqs];
+    if (guitarMode === 'strumUp' || guitarMode === 'arpDown') {
+      noteOrder.reverse();
+    }
+    const tNow = audioCtx.currentTime;
+    const intervalSec = guitarMode === 'tremolo' ? (strumSpeed / 1000 / 3) : (strumSpeed / 1000);
+
+    noteOrder.forEach((freq, i) => {
+      const voice = createSynthVoice(freq, engine, tNow + i * intervalSec);
+      voice.output.connect(outputMix);
+      voices.push(voice);
+    });
+    animateGuitarStrings();
+  } else {
+    freqs.forEach(freq => {
+      const voice = createSynthVoice(freq, engine);
+      voice.output.connect(outputMix);
+      voices.push(voice);
+    });
+  }
+
+  // Connect to master effects chain
+  const distAmt = parseFloat(document.getElementById('distortion')?.value || 0) / 100;
+  if (distAmt > 0 && engine !== 'eguitar') {
+    const dist = audioCtx.createWaveShaper();
+    dist.curve = makeDistortionCurve(distAmt);
+    outputMix.connect(dist);
+    dist.connect(masterGain);
+    if (window._reverbSend) dist.connect(window._reverbSend);
+    if (delayNode) dist.connect(delayNode);
+  } else {
+    outputMix.connect(masterGain);
+    if (window._reverbSend) outputMix.connect(window._reverbSend);
+    if (delayNode) outputMix.connect(delayNode);
+  }
+
+  activeSounds[actualId] = { voices, outputMix };
+
+  // Update bass root to match chord automatically
+  const bassRootSel = document.getElementById('bassRoot');
+  if (bassRootSel) bassRootSel.value = pad.root;
+
+  // Visual feedback
+  const padEl = document.querySelector(`[data-pad-id="${actualId}"]`);
+  if (padEl) padEl.classList.add('playing');
+  const statusInfo = document.getElementById('statusInfo');
+  if (statusInfo) statusInfo.textContent = `Playing: ${pad.name} (${pad.notes ? pad.notes.join('-') : ''})`;
+}
+
+// Stop chord with clean, pop-free fade out
+function stopChord(padId) {
+  const pad = pads.find(p => p.id == padId) || pads[padId];
+  const actualId = pad && pad.id !== undefined ? pad.id : padId;
+
+  const sound = activeSounds[actualId];
+  if (!sound) return;
+  delete activeSounds[actualId];
+
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const fadeTime = 0.06;
+
+  // Smooth fade out of output mix - guaranteed no pops or clicks!
+  try {
+    if (sound.outputMix) {
+      sound.outputMix.gain.cancelScheduledValues(t);
+      sound.outputMix.gain.setValueAtTime(sound.outputMix.gain.value, t);
+      sound.outputMix.gain.setTargetAtTime(0, t, fadeTime);
+    }
+  } catch (e) {}
+
+  sound.voices.forEach(v => {
+    try {
+      if (v.mainGain) {
+        v.mainGain.gain.cancelScheduledValues(t);
+        v.mainGain.gain.setValueAtTime(v.mainGain.gain.value, t);
+        v.mainGain.gain.setTargetAtTime(0, t, fadeTime);
+      }
+    } catch(e) {}
+    v.nodes.forEach(n => {
+      try { n.stop(t + fadeTime * 3); } catch(e) {}
+    });
+  });
+
+  setTimeout(() => {
+    try { sound.outputMix.disconnect(); } catch(e) {}
+  }, Math.ceil(fadeTime * 3000 + 100));
+
+  const padEl = document.querySelector(`[data-pad-id="${actualId}"]`);
+  if (padEl) padEl.classList.remove('playing');
+}
+
+function stopAllChords() {
+  Object.keys(activeSounds).forEach(id => stopChord(id));
+}
+
+// Direct playback for rhythm guitar or preview
+function playChordDirect(chordData, customGuitarMode, durationMs) {
+  initAudio();
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  if (!chordData) return;
+
+  const engine = document.getElementById('synthEngine').value;
+  const octave = parseInt(document.getElementById('octave').value) || 3;
+  const freqs = getChordFrequencies(chordData.root, chordData.intervals, octave);
+  const strumSpeed = parseInt(document.getElementById('strumSpeed').value) || 60;
+  const mode = customGuitarMode || document.getElementById('guitarMode').value;
+
+  const outputMix = audioCtx.createGain();
+  outputMix.gain.setValueAtTime(1, audioCtx.currentTime);
+
+  let noteOrder = [...freqs];
+  if (mode === 'strumUp' || mode === 'arpDown') noteOrder.reverse();
+
+  const tNow = audioCtx.currentTime;
+  const intervalSec = mode === 'tremolo' ? (strumSpeed / 1000 / 3) : (strumSpeed / 1000);
+
+  const voices = [];
+  noteOrder.forEach((freq, i) => {
+    const voice = createSynthVoice(freq, engine, tNow + i * intervalSec);
+    voice.output.connect(outputMix);
+    voices.push(voice);
+  });
+
+  outputMix.connect(masterGain);
+  if (window._reverbSend) outputMix.connect(window._reverbSend);
+
+  animateGuitarStrings();
+
+  // Auto release
+  const dur = (durationMs || 220) / 1000;
+  setTimeout(() => {
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    try {
+      outputMix.gain.cancelScheduledValues(t);
+      outputMix.gain.setValueAtTime(outputMix.gain.value, t);
+      outputMix.gain.setTargetAtTime(0, t, 0.05);
+    } catch(e) {}
+    voices.forEach(v => {
+      v.nodes.forEach(n => { try { n.stop(t + 0.15); } catch(e) {} });
+    });
+    setTimeout(() => { try { outputMix.disconnect(); } catch(e) {} }, 250);
+  }, durationMs || 220);
+}
+
+function animateGuitarStrings() {
+  document.querySelectorAll('.guitar-string').forEach((s, i) => {
+    setTimeout(() => {
+      s.classList.remove('vibrate');
+      void s.offsetWidth;
+      s.classList.add('vibrate');
+    }, i * 30);
+  });
+}
+
+// ========================================
+// PAD MANAGEMENT
+// ========================================
+let pads = [];
+const DEFAULT_KEYS = ['1','2','3','4','5','6','7','8','9','0','q','w','e','r','t','y','u','i','o','p','a','s','d','f','g','h','j','k','l','z','x','c','v','b','n','m'];
+const DEFAULT_CHORDS = [
+  { name:'C', root:'C', type:'maj', intervals:CHORD_TYPES.maj.intervals },
+  { name:'Dm', root:'D', type:'min', intervals:CHORD_TYPES.min.intervals },
+  { name:'Em', root:'E', type:'min', intervals:CHORD_TYPES.min.intervals },
+  { name:'F', root:'F', type:'maj', intervals:CHORD_TYPES.maj.intervals },
+  { name:'G', root:'G', type:'maj', intervals:CHORD_TYPES.maj.intervals },
+  { name:'Am', root:'A', type:'min', intervals:CHORD_TYPES.min.intervals },
+  { name:'Bdim', root:'B', type:'dim', intervals:CHORD_TYPES.dim.intervals },
+  { name:'C7', root:'C', type:'7', intervals:CHORD_TYPES['7'].intervals },
+  { name:'Dm7', root:'D', type:'min7', intervals:CHORD_TYPES.min7.intervals },
+  { name:'Em7', root:'E', type:'min7', intervals:CHORD_TYPES.min7.intervals },
+  { name:'Fmaj7', root:'F', type:'maj7', intervals:CHORD_TYPES.maj7.intervals },
+  { name:'G7', root:'G', type:'7', intervals:CHORD_TYPES['7'].intervals },
+  { name:'Am7', root:'A', type:'min7', intervals:CHORD_TYPES.min7.intervals },
+  { name:'Bm7b5', root:'B', type:'hdim7', intervals:CHORD_TYPES.hdim7.intervals },
+  { name:'Cmaj7', root:'C', type:'maj7', intervals:CHORD_TYPES.maj7.intervals },
+  { name:'D7', root:'D', type:'7', intervals:CHORD_TYPES['7'].intervals },
+];
+
+function initPads() {
+  const saved = localStorage.getItem('chordpad-pads');
+  if (saved) {
+    try {
+      pads = JSON.parse(saved);
+    } catch(e) {
+      pads = [];
+    }
+  }
+  if (!pads || !pads.length) {
+    pads = DEFAULT_CHORDS.map((c, i) => ({
+      ...c,
+      id: i,
+      key: DEFAULT_KEYS[i] || '',
+      notes: CHORD_TYPES[c.type].intervals.map(iv => {
+        const idx = (NOTE_NAMES.indexOf(c.root) + iv) % 12;
+        return NOTE_NAMES[idx];
+      })
+    }));
+  }
+  document.getElementById('padCount').value = pads.length;
+  renderPads();
+}
+
+// Map to track multiple simultaneous finger touches on mobile pads
+const activeTouchPads = new Map();
+
+function renderPads() {
+  const grid = document.getElementById('padsGrid');
+  const cols = parseInt(document.getElementById('padColumns')?.value || 0);
+  if (cols > 0) {
+    grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  } else {
+    // Clear inline style so responsive CSS (max-width: 768px -> minmax(90px, 1fr)) applies perfectly
+    grid.style.gridTemplateColumns = '';
+  }
+
+  grid.innerHTML = '';
+  pads.forEach((pad, i) => {
+    const el = document.createElement('div');
+    el.className = 'pad';
+    el.dataset.padId = pad.id;
+    el.innerHTML = `
+      <div>
+        <div class="pad-chord">${pad.name}</div>
+        <div class="pad-notes">${pad.notes ? pad.notes.join(' ') : ''}</div>
+      </div>
+      ${pad.key ? `<div class="pad-key">${pad.key.toUpperCase()}</div>` : ''}
+      <div class="pad-actions">
+        <button onclick="event.stopPropagation();editPadChord(${pad.id})" data-tooltip="Change chord">🔄</button>
+        <button onclick="event.stopPropagation();editPadKey(${pad.id})" data-tooltip="Set keybind">⌨</button>
+        <button onclick="event.stopPropagation();removePad(${pad.id})" data-tooltip="Remove">✕</button>
+      </div>
+    `;
+
+    // Mouse playback (Desktop)
+    el.addEventListener('mousedown', (e) => {
+      if (e.target.tagName !== 'BUTTON') {
+        e.preventDefault();
+        playChord(pad.id);
+      }
+    });
+
+    el.addEventListener('mouseup', () => {
+      const sustainMode = document.getElementById('sustainMode')?.value || 'hold';
+      if (sustainMode === 'hold') {
+        stopChord(pad.id);
+      }
+    });
+
+    el.addEventListener('mouseleave', () => {
+      const sustainMode = document.getElementById('sustainMode')?.value || 'hold';
+      if (sustainMode === 'hold') {
+        stopChord(pad.id);
+      }
+    });
+
+    // Touch playback (Mobile Multi-Touch)
+    el.addEventListener('touchstart', (e) => {
+      if (e.target.tagName !== 'BUTTON') {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          activeTouchPads.set(e.changedTouches[i].identifier, pad.id);
+        }
+        playChord(pad.id);
+      }
+    }, { passive: false });
+
+    el.addEventListener('touchend', (e) => {
+      const sustainMode = document.getElementById('sustainMode')?.value || 'hold';
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        activeTouchPads.delete(e.changedTouches[i].identifier);
+      }
+      const isStillHeld = Array.from(activeTouchPads.values()).includes(pad.id);
+      if (sustainMode === 'hold' && !isStillHeld) {
+        stopChord(pad.id);
+      }
+    });
+
+    el.addEventListener('touchcancel', (e) => {
+      const sustainMode = document.getElementById('sustainMode')?.value || 'hold';
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        activeTouchPads.delete(e.changedTouches[i].identifier);
+      }
+      const isStillHeld = Array.from(activeTouchPads.values()).includes(pad.id);
+      if (sustainMode === 'hold' && !isStillHeld) {
+        stopChord(pad.id);
+      }
+    });
+
+    grid.appendChild(el);
+  });
+
+  // Add pad button
+  const addBtn = document.createElement('div');
+  addBtn.className = 'pad add-pad';
+  addBtn.innerHTML = '<span>+</span>';
+  addBtn.onclick = () => openAddChordModal();
+  grid.appendChild(addBtn);
+
+  savePads();
+}
+
+// Global release handlers: never miss a mouseup or tab switch!
+window.addEventListener('mouseup', () => {
+  const sustainMode = document.getElementById('sustainMode')?.value || 'hold';
+  if (sustainMode === 'hold') {
+    Object.keys(activeSounds).forEach(id => {
+      const pad = pads.find(p => p.id == id);
+      if (!pad || !pad.key || !heldKeys.has(pad.key.toLowerCase())) {
+        stopChord(id);
+      }
+    });
+  }
+});
+
+// Multi-touch window release handler
+window.addEventListener('touchend', (e) => {
+  const sustainMode = document.getElementById('sustainMode')?.value || 'hold';
+  if (sustainMode === 'hold') {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      const pId = activeTouchPads.get(t.identifier);
+      if (pId) {
+        activeTouchPads.delete(t.identifier);
+        const isStillHeld = Array.from(activeTouchPads.values()).includes(pId);
+        if (!isStillHeld) {
+          stopChord(pId);
+        }
+      }
+    }
+    if (e.touches.length === 0) {
+      activeTouchPads.clear();
+      Object.keys(activeSounds).forEach(id => {
+        const pad = pads.find(p => p.id == id);
+        if (!pad || !pad.key || !heldKeys.has(pad.key.toLowerCase())) {
+          stopChord(id);
+        }
+      });
+    }
+  }
+});
+
+window.addEventListener('blur', () => {
+  heldKeys.clear();
+  stopAllChords();
+});
+
+function savePads() {
+  localStorage.setItem('chordpad-pads', JSON.stringify(pads));
+}
+
+function updatePadCount() {
+  const count = parseInt(document.getElementById('padCount').value);
+  if (count < pads.length) {
+    pads = pads.slice(0, count);
+  } else {
+    const roots = NOTE_NAMES;
+    const types = Object.keys(CHORD_TYPES);
+    while (pads.length < count) {
+      const i = pads.length;
+      const rootIdx = i % 12;
+      const typeIdx = Math.floor(i / 12) % types.length;
+      const root = roots[rootIdx];
+      const type = types[typeIdx];
+      const name = type === 'maj' ? root : type === 'min' ? root + 'm' : root + type;
+      pads.push({
+        id: Date.now() + i,
+        name,
+        root,
+        type,
+        intervals: CHORD_TYPES[type].intervals,
+        key: DEFAULT_KEYS[i] || '',
+        notes: CHORD_TYPES[type].intervals.map(iv => NOTE_NAMES[(NOTE_NAMES.indexOf(root) + iv) % 12])
+      });
+    }
+  }
+  renderPads();
+}
+
+function removePad(id) {
+  pads = pads.filter(p => p.id !== id);
+  renderPads();
+}
+
+function editPadChord(id) {
+  window._editPadId = id;
+  openAddChordModal();
+}
+
+function editPadKey(id) {
+  const pad = pads.find(p => p.id === id);
+  if (!pad) return;
+
+  const existing = document.querySelector('.keybind-listening-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'keybind-listening-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);padding:16px;touch-action:manipulation;';
+
+  const quickKeys = ['1','2','3','4','5','6','7','8','Q','W','E','R','T','Y','U','I','A','S','D','F','G','H','J','K','Z','X','C','V','B','N','M','Space'];
+
+  overlay.innerHTML = `
+    <div style="background:var(--surface2);padding:22px 18px;border-radius:18px;text-align:center;border:2px solid var(--accent);width:100%;max-width:440px;position:relative;box-shadow:0 12px 40px rgba(0,0,0,0.7);max-height:90vh;overflow-y:auto;" onclick="event.stopPropagation()">
+      <!-- Close Button Top-Right -->
+      <button id="closeKeybindTopBtn" style="position:absolute;top:14px;right:14px;background:var(--surface3);border:1px solid var(--border);border-radius:8px;color:var(--text);width:38px;height:38px;font-size:1.3em;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;transition:all 0.2s;" title="Tutup">✕</button>
+
+      <div style="font-size:1.15em;font-weight:700;margin-bottom:6px;color:var(--text);padding-right:40px;text-align:left;">
+        ⌨ Ganti Tombol: <span style="color:var(--accent2);">${pad.name}</span>
+      </div>
+      
+      <div style="font-size:0.82em;color:var(--text2);text-align:left;margin-bottom:14px;">
+        Tombol saat ini: <strong style="color:var(--accent);font-size:1.1em;background:var(--surface3);padding:2px 8px;border-radius:6px;border:1px solid var(--border);">${pad.key ? (pad.key === ' ' ? 'SPACE' : pad.key.toUpperCase()) : 'Belum Ada (—)'}</strong>
+      </div>
+
+      <!-- Instruction Banner -->
+      <div style="background:rgba(124,92,252,0.12);border:1px solid rgba(124,92,252,0.3);border-radius:10px;padding:10px 12px;font-size:0.8em;color:var(--text);margin-bottom:14px;text-align:left;line-height:1.4;">
+        💡 <strong>Di Laptop:</strong> Langsung tekan tombol apa saja di keyboard.<br>
+        📱 <strong>Di HP:</strong> Pilih tombol cepat di bawah atau gunakan tombol Tutup/Hapus.
+      </div>
+
+      <!-- Mobile Virtual Input -->
+      <div style="margin-bottom:14px;">
+        <input type="text" id="mobileKeyInput" maxlength="1" placeholder="Atau ketik 1 karakter di sini..." style="width:100%;background:var(--surface3);border:1.5px dashed var(--accent2);border-radius:10px;padding:10px;color:var(--text);font-size:1em;text-align:center;font-weight:700;outline:none;" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      </div>
+
+      <!-- Quick Key Grid -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:0.75em;color:var(--text2);text-transform:uppercase;margin-bottom:8px;font-weight:700;text-align:left;">Pilihan Tombol Cepat:</div>
+        <div style="display:grid;grid-template-columns:repeat(8, 1fr);gap:5px;">
+          ${quickKeys.map(k => `
+            <button class="quick-key-btn" data-key="${k === 'Space' ? ' ' : k.toLowerCase()}" style="background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:7px 0;color:var(--text);font-weight:700;font-size:0.82em;cursor:pointer;touch-action:manipulation;transition:all 0.15s;${k === 'Space' ? 'grid-column: span 2;' : ''}">
+              ${k}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Bottom Action Buttons -->
+      <div style="display:flex;gap:10px;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+        <button id="clearKeybindBtn" class="btn danger small" style="flex:1;padding:10px 8px;border-radius:8px;font-size:0.85em;">🗑 Hapus Tombol</button>
+        <button id="closeKeybindBottomBtn" class="btn secondary small" style="flex:1;padding:10px 8px;border-radius:8px;font-size:0.85em;">✕ Tutup / Batal</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Close function & cleanup
+  let isClosed = false;
+  const cleanup = () => {
+    if (isClosed) return;
+    isClosed = true;
+    overlay.remove();
+    document.removeEventListener('keydown', keyHandler, true);
+  };
+
+  // Close triggers
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) cleanup();
+  });
+  const topClose = overlay.querySelector('#closeKeybindTopBtn');
+  if (topClose) topClose.addEventListener('click', cleanup);
+  const botClose = overlay.querySelector('#closeKeybindBottomBtn');
+  if (botClose) botClose.addEventListener('click', cleanup);
+
+  // Clear button
+  const clearBtn = overlay.querySelector('#clearKeybindBtn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      pad.key = '';
+      cleanup();
+      renderPads();
+      if (typeof renderKeybindsList === 'function') renderKeybindsList();
+    });
+  }
+
+  // Quick key buttons
+  overlay.querySelectorAll('.quick-key-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const selectedKey = btn.dataset.key;
+      assignKey(selectedKey);
+    });
+  });
+
+  // Mobile virtual keyboard input
+  const mobileInput = overlay.querySelector('#mobileKeyInput');
+  if (mobileInput) {
+    mobileInput.addEventListener('input', (e) => {
+      const val = e.target.value.trim();
+      if (val.length > 0) {
+        assignKey(val[0].toLowerCase());
+      }
+    });
+  }
+
+  // Helper to assign key cleanly
+  const assignKey = (keyChar) => {
+    const k = keyChar.toLowerCase();
+    pads.forEach(p => { if (p.key === k) p.key = ''; });
+    pad.key = k;
+    cleanup();
+    renderPads();
+    if (typeof renderKeybindsList === 'function') renderKeybindsList();
+  };
+
+  // Physical keyboard listener
+  const keyHandler = (e) => {
+    if (e.target === mobileInput) {
+      if (e.key === 'Escape') {
+        cleanup();
+        return;
+      }
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (e.key === 'Escape') {
+      cleanup();
+      return;
+    }
+    if (e.key === 'Backspace') {
+      pad.key = '';
+      cleanup();
+      renderPads();
+      if (typeof renderKeybindsList === 'function') renderKeybindsList();
+      return;
+    }
+
+    let pressedKey = e.key;
+    if (e.code === 'Space') pressedKey = ' ';
+    assignKey(pressedKey);
+  };
+
+  document.addEventListener('keydown', keyHandler, true);
+}
+
+// ========================================
+// KEYBOARD HANDLING (Continuous Sustain - No Repeating!)
+// ========================================
+const heldKeys = new Set();
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+  if (document.querySelector('.modal-overlay.show')) return;
+  if (document.querySelector('.keybind-listening-overlay')) return;
+
+  const key = e.key.toLowerCase();
+
+  // CRITICAL: heldKeys prevents OS auto-repeat from chopping the chord!
+  // When held down, the sound continues to sustain cleanly without retriggering!
+  if (heldKeys.has(key)) return;
+  heldKeys.add(key);
+
+  const pad = pads.find(p => p.key && p.key.toLowerCase() === key);
+  if (pad) {
+    e.preventDefault();
+    const sustainMode = document.getElementById('sustainMode')?.value || 'hold';
+    if (sustainMode === 'toggle') {
+      if (activeSounds[pad.id]) {
+        stopChord(pad.id);
+      } else {
+        playChord(pad.id);
+      }
+    } else if (sustainMode === 'oneshot') {
+      playChord(pad.id);
+      const dur = parseInt(document.getElementById('oneshotDuration')?.value) || 500;
+      setTimeout(() => stopChord(pad.id), dur);
+    } else {
+      playChord(pad.id);
+    }
+  }
+});
+
+document.addEventListener('keyup', (e) => {
+  const key = e.key.toLowerCase();
+  heldKeys.delete(key);
+
+  const sustainMode = document.getElementById('sustainMode')?.value || 'hold';
+  if (sustainMode === 'hold') {
+    const pad = pads.find(p => p.key && p.key.toLowerCase() === key);
+    if (pad) {
+      stopChord(pad.id);
+    }
+  }
+});
+
+// ========================================
+// BPM & METRONOME
+// ========================================
+let bpm = 120;
+let timeSig = 4;
+let metronomeOn = false;
+let metronomeInterval = null;
+let currentBeat = 0;
+
+function updateBPM(val) {
+  bpm = Math.max(40, Math.min(240, parseInt(val) || 120));
+  document.getElementById('bpmValue').textContent = bpm;
+  document.getElementById('bpmSlider').value = bpm;
+  document.getElementById('bpmInput').value = bpm;
+  if (metronomeOn) { stopMetronome(); startMetronome(); }
+  if (bassOn) { stopBassLine(); startBassLine(); }
+  if (autoRhythmOn) { stopAutoRhythm(); startAutoRhythm(); }
+}
+
+function updateTimeSig() {
+  timeSig = parseInt(document.getElementById('timeSig').value);
+  // Update beat dots
+  const container = document.getElementById('beat0').parentElement;
+  container.innerHTML = '';
+  for (let i = 0; i < timeSig; i++) {
+    const dot = document.createElement('span');
+    dot.className = 'bpm-dot';
+    dot.id = `beat${i}`;
+    container.appendChild(dot);
+  }
+  if (metronomeOn) { stopMetronome(); startMetronome(); }
+}
+
+function toggleMetronome() {
+  metronomeOn = !metronomeOn;
+  const btn = document.getElementById('metronomeBtn');
+  if (metronomeOn) {
+    btn.textContent = '🔊 Metronome';
+    btn.classList.add('active-toggle');
+    startMetronome();
+  } else {
+    btn.textContent = '🔇 Metronome';
+    btn.classList.remove('active-toggle');
+    stopMetronome();
+  }
+}
+
+function startMetronome() {
+  currentBeat = 0;
+  const interval = 60000 / bpm;
+  metronomeInterval = setInterval(() => {
+    clickMetronome(currentBeat === 0);
+    // Visual
+    for (let i = 0; i < timeSig; i++) {
+      const dot = document.getElementById(`beat${i}`);
+      if (dot) dot.classList.toggle('active', i === currentBeat);
+    }
+    currentBeat = (currentBeat + 1) % timeSig;
+  }, interval);
+}
+
+function stopMetronome() {
+  clearInterval(metronomeInterval);
+  for (let i = 0; i < timeSig; i++) {
+    const dot = document.getElementById(`beat${i}`);
+    if (dot) dot.classList.remove('active');
+  }
+}
+
+function clickMetronome(accent) {
+  initAudio();
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = accent ? 1200 : 800;
+  g.gain.setValueAtTime(0.15, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+  osc.connect(g);
+  g.connect(masterGain);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.08);
+}
+
+// ========================================
+// AUTO BASS
+// ========================================
+let bassOn = false;
+let bassInterval = null;
+let bassStep = 0;
+
+function toggleBass() {
+  bassOn = !bassOn;
+  const btn = document.getElementById('bassToggle');
+  if (bassOn) {
+    btn.textContent = 'ON';
+    btn.classList.add('active-toggle');
+    startBassLine();
+  } else {
+    btn.textContent = 'OFF';
+    btn.classList.remove('active-toggle');
+    stopBassLine();
+  }
+}
+
+function startBassLine() {
+  initAudio();
+  const pattern = document.getElementById('bassPattern').value;
+  let stepsPerBeat = pattern === 'eighth' || pattern === 'funk' ? 2 : 1;
+  const interval = (60000 / bpm) / stepsPerBeat;
+  bassStep = 0;
+
+  updateBassSteps(stepsPerBeat);
+
+  bassInterval = setInterval(() => {
+    playBassNote();
+    bassStep = (bassStep + 1) % (timeSig * stepsPerBeat);
+  }, interval);
+}
+
+function stopBassLine() {
+  clearInterval(bassInterval);
+  document.querySelectorAll('.bass-step').forEach(s => s.classList.remove('current'));
+}
+
+function playBassNote() {
+  initAudio();
+  const root = document.getElementById('bassRoot').value;
+  const pattern = document.getElementById('bassPattern').value;
+  const bassSound = document.getElementById('bassSound').value;
+  const volume = parseInt(document.getElementById('bassVolume').value) / 100;
+  const rootIdx = NOTE_NAMES.indexOf(root);
+  const octave = 2;
+
+  let freq = NOTE_FREQ[root + octave];
+  let shouldPlay = true;
+
+  switch(pattern) {
+    case 'quarter': break;
+    case 'eighth': break;
+    case 'walking': {
+      const walk = [0, 4, 7, 4];
+      const interval = walk[bassStep % walk.length];
+      const ni = (rootIdx + interval) % 12;
+      freq = NOTE_FREQ[NOTE_NAMES[ni] + octave];
+      break;
+    }
+    case 'octave': {
+      freq = bassStep % 2 === 0 ? NOTE_FREQ[root + octave] : NOTE_FREQ[root + (octave + 1)];
+      break;
+    }
+    case 'fifths': {
+      const fifth = (rootIdx + 7) % 12;
+      freq = bassStep % 2 === 0 ? NOTE_FREQ[root + octave] : NOTE_FREQ[NOTE_NAMES[fifth] + octave];
+      break;
+    }
+    case 'reggae': {
+      shouldPlay = bassStep % 2 === 1;
+      break;
+    }
+    case 'funk': {
+      const funkPattern = [true, false, true, true, false, true, false, true];
+      shouldPlay = funkPattern[bassStep % funkPattern.length];
+      if (shouldPlay && bassStep % 3 === 0) {
+        const fifth = (rootIdx + 7) % 12;
+        freq = NOTE_FREQ[NOTE_NAMES[fifth] + octave];
+      }
+      break;
+    }
+  }
+
+  // Update visual
+  document.querySelectorAll('.bass-step').forEach((s, i) => {
+    s.classList.toggle('current', i === bassStep);
+  });
+
+  if (!shouldPlay) return;
+
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  const flt = audioCtx.createBiquadFilter();
+
+  switch(bassSound) {
+    case 'sub':
+      osc.type = 'sine';
+      flt.frequency.value = 200;
+      break;
+    case 'finger':
+      osc.type = 'triangle';
+      flt.frequency.value = 600;
+      break;
+    case 'slap': {
+      osc.type = 'sawtooth';
+      flt.frequency.setValueAtTime(2000, t);
+      flt.frequency.exponentialRampToValueAtTime(300, t + 0.1);
+      flt.Q.value = 5;
+      break;
+    }
+    case 'synth':
+      osc.type = 'sawtooth';
+      flt.frequency.value = 800;
+      flt.Q.value = 3;
+      break;
+    case 'upright':
+      osc.type = 'triangle';
+      flt.frequency.value = 400;
+      break;
+  }
+
+  flt.type = 'lowpass';
+  osc.frequency.value = freq;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(volume * 0.5, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+
+  osc.connect(flt);
+  flt.connect(g);
+  g.connect(masterGain);
+  osc.start(t);
+  osc.stop(t + 0.35);
+}
+
+function updateBassSteps(stepsPerBeat) {
+  const container = document.getElementById('bassSteps');
+  container.innerHTML = '';
+  const total = timeSig * (stepsPerBeat || 1);
+  for (let i = 0; i < total; i++) {
+    const step = document.createElement('div');
+    step.className = 'bass-step';
+    step.textContent = i + 1;
+    container.appendChild(step);
+  }
+}
+
+function updateBassPattern() {
+  if (bassOn) { stopBassLine(); startBassLine(); }
+}
+
+// ========================================
+// AUTO RHYTHM GUITAR
+// ========================================
+let autoRhythmOn = false;
+let autoRhythmInterval = null;
+let rhythmStep = 0;
+
+function toggleAutoRhythm() {
+  autoRhythmOn = !autoRhythmOn;
+  const btn = document.getElementById('autoRhythmBtn');
+  const row = document.getElementById('rhythmPatternRow');
+  if (autoRhythmOn) {
+    btn.textContent = 'ON';
+    btn.classList.add('active-toggle');
+    row.style.display = 'flex';
+    startAutoRhythm();
+  } else {
+    btn.textContent = 'OFF';
+    btn.classList.remove('active-toggle');
+    row.style.display = 'none';
+    stopAutoRhythm();
+  }
+}
+
+function startAutoRhythm() {
+  const interval = (60000 / bpm) / 2; // eighth note resolution
+  rhythmStep = 0;
+  autoRhythmInterval = setInterval(() => {
+    const pattern = document.getElementById('rhythmPattern').value;
+    const patterns = {
+      'ddu':    [{t:'strumDown'},{t:null},{t:'strumDown'},{t:null},{t:'strumUp'},{t:null}],
+      'ddud':   [{t:'strumDown'},{t:null},{t:'strumDown'},{t:'strumUp'},{t:null},{t:'strumDown'},{t:null},{t:null}],
+      'dduudu': [{t:'strumDown'},{t:'strumDown'},{t:'strumUp'},{t:'strumUp'},{t:'strumDown'},{t:'strumUp'}],
+      'folk':   [{t:'pick'},{t:null},{t:'strumDown'},{t:null},{t:'pick'},{t:null},{t:'strumDown'},{t:null}],
+      'reggae': [{t:null},{t:null},{t:'strumUp'},{t:null},{t:null},{t:null},{t:'strumUp'},{t:null}],
+      'arpeggio':[{t:'arpUp'},{t:null},{t:'arpUp'},{t:null},{t:'arpDown'},{t:null},{t:'arpDown'},{t:null}],
+    };
+    const p = patterns[pattern] || patterns['ddu'];
+    const step = p[rhythmStep % p.length];
+    if (step.t) {
+      // Play the currently active chord or last pressed chord
+      const lastPad = pads.find(p => activeSounds[p.id]) || pads[0];
+      if (lastPad) {
+        playChordDirect(lastPad, step.t, 220);
+      }
+    }
+    rhythmStep++;
+  }, interval);
+}
+
+function stopAutoRhythm() {
+  clearInterval(autoRhythmInterval);
+}
+
+// ========================================
+// VISUALIZER
+// ========================================
+function startVisualizer() {
+  const canvas = document.getElementById('visualizerCanvas');
+  const ctx = canvas.getContext('2d');
+  const bufLen = analyserNode.frequencyBinCount;
+  const dataArray = new Uint8Array(bufLen);
+
+  function draw() {
+    requestAnimationFrame(draw);
+    analyserNode.getByteFrequencyData(dataArray);
+
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const barW = canvas.width / bufLen * 2.5;
+    let x = 0;
+    let maxVal = 0;
+    for (let i = 0; i < bufLen; i++) {
+      const v = dataArray[i] / 255;
+      if (dataArray[i] > maxVal) maxVal = dataArray[i];
+      const h = v * canvas.height;
+      const hue = 250 + v * 60;
+      ctx.fillStyle = `hsla(${hue}, 80%, ${50 + v * 30}%, ${0.5 + v * 0.5})`;
+      ctx.fillRect(x, canvas.height - h, barW - 1, h);
+      x += barW;
+    }
+
+    // Volume meter
+    const meter = document.getElementById('volumeMeter');
+    if (meter) meter.style.width = (maxVal / 255 * 100) + '%';
+  }
+  draw();
+}
+
+// ========================================
+// UI EVENT HANDLERS
+// ========================================
+document.getElementById('masterVolume').addEventListener('input', function() {
+  if (masterGain) masterGain.gain.value = this.value / 100;
+  document.getElementById('volDisplay').textContent = this.value + '%';
+});
+
+document.getElementById('reverbMix').addEventListener('input', function() {
+  if (window._reverbSend) window._reverbSend.gain.value = this.value / 100;
+});
+
+document.getElementById('delayMix').addEventListener('input', function() {
+  if (delayGain) delayGain.gain.value = this.value / 100 * 0.5;
+  document.getElementById('delayDisplay').textContent = this.value + '%';
+});
+
+document.getElementById('delayTime').addEventListener('input', function() {
+  if (delayNode) delayNode.delayTime.value = this.value / 1000;
+  document.getElementById('delayTimeDisplay').textContent = this.value + 'ms';
+});
+
+document.getElementById('chorusMix').addEventListener('input', function() {
+  document.getElementById('chorusDisplay').textContent = this.value + '%';
+});
+
+document.getElementById('distortion').addEventListener('input', function() {
+  document.getElementById('distortionDisplay').textContent = this.value + '%';
+});
+
+document.getElementById('bassVolume').addEventListener('input', function() {
+  document.getElementById('bassVolDisplay').textContent = this.value + '%';
+});
+
+document.getElementById('strumSpeed').addEventListener('input', function() {
+  document.getElementById('strumSpeedDisplay').textContent = this.value + 'ms';
+});
+
+document.getElementById('sustainMode').addEventListener('change', function() {
+  document.getElementById('oneshotDurationGroup').style.display = this.value === 'oneshot' ? 'block' : 'none';
+});
+
+// ========================================
+// MODALS
+// ========================================
+function openAddChordModal() {
+  document.getElementById('addChordModal').classList.add('show');
+  document.getElementById('chordSearch').value = '';
+  document.getElementById('chordResults').innerHTML = '';
+  populateChordTypes();
+  searchChords('');
+}
+
+function openSettingsModal() {
+  document.getElementById('settingsModal').classList.add('show');
+  renderKeybindsList();
+  renderSavedPresets();
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+  window._editPadId = undefined;
+}
+
+// Close modals on outside click
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', (e) => {
+    if (e.target === m) closeModal(m.id);
+  });
+});
+
+function switchAddTab(tab) {
+  ['search','custom','image'].forEach(t => {
+    document.getElementById('addTab-' + t).style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('#addChordModal .tab').forEach((el, i) => {
+    el.classList.toggle('active', ['search','custom','image'][i] === tab);
+  });
+}
+
+function switchSettingsTab(tab) {
+  ['keybinds','general','presets'].forEach(t => {
+    document.getElementById('settingsTab-' + t).style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('#settingsModal .tab').forEach((el, i) => {
+    el.classList.toggle('active', ['keybinds','general','presets'][i] === tab);
+  });
+}
+
+function searchChords(query) {
+  const results = document.getElementById('chordResults');
+  const q = query.toLowerCase().trim();
+  const filtered = q ? ALL_CHORDS.filter(c =>
+    c.name.toLowerCase().includes(q) || c.fullName.toLowerCase().includes(q)
+  ).slice(0, 30) : ALL_CHORDS.slice(0, 30);
+
+  results.innerHTML = filtered.map(c => `
+    <div class="chord-search-item" onclick="addChordFromSearch('${c.name}','${c.root}','${c.type}')">
+      <span class="chord-name">${c.name}</span>
+      <span class="chord-notes">${c.notes.join(' ')}</span>
+    </div>
+  `).join('');
+}
+
+function addChordFromSearch(name, root, type) {
+  const chord = {
+    id: Date.now(),
+    name,
+    root,
+    type,
+    intervals: CHORD_TYPES[type].intervals,
+    key: '',
+    notes: CHORD_TYPES[type].intervals.map(iv => NOTE_NAMES[(NOTE_NAMES.indexOf(root) + iv) % 12])
+  };
+
+  if (window._editPadId !== undefined) {
+    const idx = pads.findIndex(p => p.id === window._editPadId);
+    if (idx >= 0) {
+      chord.id = pads[idx].id;
+      chord.key = pads[idx].key;
+      pads[idx] = chord;
+    }
+  } else {
+    // Assign next available key
+    const usedKeys = new Set(pads.map(p => p.key));
+    chord.key = DEFAULT_KEYS.find(k => !usedKeys.has(k)) || '';
+    pads.push(chord);
+  }
+
+  renderPads();
+  closeModal('addChordModal');
+}
+
+function populateChordTypes() {
+  const sel = document.getElementById('customType');
+  sel.innerHTML = Object.entries(CHORD_TYPES).map(([k, v]) =>
+    `<option value="${k}">${v.name}</option>`
+  ).join('');
+}
+
+function addCustomChord() {
+  const root = document.getElementById('customRoot').value;
+  const type = document.getElementById('customType').value;
+  const typeInfo = CHORD_TYPES[type];
+  let name;
+  if (type === 'maj') name = root;
+  else if (type === 'min') name = root + 'm';
+  else name = root + type;
+  addChordFromSearch(name, root, type);
+}
+
+// ========================================
+// IMAGE UPLOAD (Chord Detection)
+// ========================================
+function handleImageUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const preview = document.getElementById('uploadPreview');
+    preview.src = e.target.result;
+    preview.style.display = 'block';
+    // Try to detect chords from image using canvas OCR simulation
+    detectChordsFromImage(e.target.result);
+  };
+  reader.readAsDataURL(file);
+}
+
+function detectChordsFromImage(dataUrl) {
+  // Since we can't do real OCR in browser without a library,
+  // we'll prompt the user to type what they see, and provide common chord suggestions
+  const detected = document.getElementById('detectedChords');
+  detected.innerHTML = `
+    <div style="color:var(--text2);font-size:0.8em;margin-bottom:8px">
+      💡 Type the chords you see in the image above, separated by commas.
+      Or click common chords below:
+    </div>
+    ${['C','Am','F','G','Em','Dm','E','A','D','Bm','G7','C7','Fmaj7','Am7','Dm7','Em7'].map(c =>
+      `<span class="detected-chord" onclick="addDetectedChord('${c}')">${c}</span>`
+    ).join('')}
+  `;
+}
+
+function addDetectedChord(name) {
+  const chord = ALL_CHORDS.find(c => c.name === name);
+  if (chord) addChordFromSearch(chord.name, chord.root, chord.type);
+}
+
+function addChordsFromImage() {
+  const input = document.getElementById('imageChordInput').value;
+  if (!input) return;
+  const chordNames = input.split(',').map(s => s.trim()).filter(Boolean);
+  chordNames.forEach(name => {
+    // Try to find matching chord
+    const chord = ALL_CHORDS.find(c => c.name.toLowerCase() === name.toLowerCase());
+    if (chord) {
+      const newPad = {
+        id: Date.now() + Math.random() * 1000,
+        name: chord.name,
+        root: chord.root,
+        type: chord.type,
+        intervals: chord.intervals,
+        key: '',
+        notes: chord.notes
+      };
+      const usedKeys = new Set(pads.map(p => p.key));
+      newPad.key = DEFAULT_KEYS.find(k => !usedKeys.has(k)) || '';
+      pads.push(newPad);
+    }
+  });
+  renderPads();
+  closeModal('addChordModal');
+}
+
+// Drag and drop
+const uploadArea = document.getElementById('uploadArea');
+uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = 'var(--accent)'; });
+uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = 'var(--border)'; });
+uploadArea.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadArea.style.borderColor = 'var(--border)';
+  if (e.dataTransfer.files.length) {
+    document.getElementById('imageInput').files = e.dataTransfer.files;
+    handleImageUpload({ target: { files: e.dataTransfer.files } });
+  }
+});
+
+// ========================================
+// KEYBINDS SETTINGS
+// ========================================
+function renderKeybindsList() {
+  const list = document.getElementById('keybindsList');
+  list.innerHTML = pads.map((pad, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid var(--border)">
+      <span style="font-weight:600">${pad.name}</span>
+      <div class="keybind-input" onclick="editPadKey(${pad.id})">${pad.key ? (pad.key === ' ' ? 'SPACE' : pad.key.toUpperCase()) : '—'}</div>
+    </div>
+  `).join('');
+}
+
+function listenForKeybind(padId, el) {
+  el.classList.add('listening');
+  el.textContent = '...';
+  const handler = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const pad = pads.find(p => p.id === padId);
+    if (e.key === 'Escape') {
+      el.classList.remove('listening');
+      el.textContent = pad.key ? pad.key.toUpperCase() : '—';
+    } else if (e.key === 'Backspace') {
+      pad.key = '';
+      el.classList.remove('listening');
+      el.textContent = '—';
+      renderPads();
+    } else {
+      pads.forEach(p => { if (p.key === e.key.toLowerCase()) p.key = ''; });
+      pad.key = e.key.toLowerCase();
+      el.classList.remove('listening');
+      el.textContent = e.key.toUpperCase();
+      renderPads();
+      renderKeybindsList();
+    }
+    document.removeEventListener('keydown', handler, true);
+  };
+  document.addEventListener('keydown', handler, true);
+}
+
+// ========================================
+// PRESETS
+// ========================================
+function loadPreset() {
+  const preset = document.getElementById('presetSelect').value;
+  if (!preset) return;
+
+  const presets = {
+    pop: ['C','Am','F','G','Dm','Em','G7','Cmaj7'],
+    blues: ['E7','A7','B7','E','A','B','E9','A9'],
+    jazz: ['Cmaj7','Dm7','Em7','Fmaj7','G7','Am7','Bm7b5','Cmaj7','Fmaj7','G7','Am7','Dm7'],
+    rock: ['C5','D5','E5','F5','G5','A5','B5','C','G','Am','F','D'],
+    lofi: ['Cmaj7','Am7','Dm7','G7','Fmaj7','Em7','Am7','Dm7'],
+    bossa: ['Cmaj7','Dm7','G7','Cmaj7','Fmaj7','Fm','Em7','A7'],
+    allMajor: NOTE_NAMES.map(n => n),
+    allMinor: NOTE_NAMES.map(n => n + 'm'),
+  };
+
+  const chordNames = presets[preset];
+  if (!chordNames) return;
+
+  pads = chordNames.map((name, i) => {
+    const chord = ALL_CHORDS.find(c => c.name === name);
+    if (!chord) return null;
+    return {
+      id: Date.now() + i,
+      name: chord.name,
+      root: chord.root,
+      type: chord.type,
+      intervals: chord.intervals,
+      key: DEFAULT_KEYS[i] || '',
+      notes: chord.notes
+    };
+  }).filter(Boolean);
+
+  renderPads();
+}
+
+function savePreset() {
+  const name = document.getElementById('presetName').value.trim();
+  if (!name) return;
+  const saved = JSON.parse(localStorage.getItem('chordpad-custom-presets') || '{}');
+  saved[name] = pads.map(p => ({ name: p.name, root: p.root, type: p.type }));
+  localStorage.setItem('chordpad-custom-presets', JSON.stringify(saved));
+  document.getElementById('presetName').value = '';
+  renderSavedPresets();
+}
+
+function renderSavedPresets() {
+  const saved = JSON.parse(localStorage.getItem('chordpad-custom-presets') || '{}');
+  const container = document.getElementById('savedPresets');
+  container.innerHTML = Object.keys(saved).map(name => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span>${name}</span>
+      <div>
+        <button class="btn small" onclick="loadCustomPreset('${name}')">Load</button>
+        <button class="btn small danger" onclick="deleteCustomPreset('${name}')">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function loadCustomPreset(name) {
+  const saved = JSON.parse(localStorage.getItem('chordpad-custom-presets') || '{}');
+  const preset = saved[name];
+  if (!preset) return;
+  pads = preset.map((p, i) => ({
+    id: Date.now() + i,
+    ...p,
+    intervals: CHORD_TYPES[p.type].intervals,
+    key: DEFAULT_KEYS[i] || '',
+    notes: CHORD_TYPES[p.type].intervals.map(iv => NOTE_NAMES[(NOTE_NAMES.indexOf(p.root) + iv) % 12])
+  }));
+  renderPads();
+  closeModal('settingsModal');
+}
+
+function deleteCustomPreset(name) {
+  const saved = JSON.parse(localStorage.getItem('chordpad-custom-presets') || '{}');
+  delete saved[name];
+  localStorage.setItem('chordpad-custom-presets', JSON.stringify(saved));
+  renderSavedPresets();
+}
+
+// ========================================
+// THEME
+// ========================================
+function updateTheme(theme) {
+  const themes = {
+    dark: { bg:'#0a0a0f', surface:'#14141f', surface2:'#1e1e2e', surface3:'#282840', accent:'#7c5cfc', accent2:'#5ce1e6' },
+    midnight: { bg:'#0a0e1a', surface:'#111827', surface2:'#1f2937', surface3:'#374151', accent:'#3b82f6', accent2:'#60a5fa' },
+    purple: { bg:'#1a0a2e', surface:'#2d1b69', surface2:'#3b2085', surface3:'#4c2896', accent:'#a855f7', accent2:'#e879f9' },
+    forest: { bg:'#0a1a0f', surface:'#0f2416', surface2:'#1a3a22', surface3:'#24502e', accent:'#22c55e', accent2:'#4ade80' },
+  };
+  const t = themes[theme];
+  if (!t) return;
+  Object.entries(t).forEach(([k, v]) => {
+    document.documentElement.style.setProperty('--' + k, v);
+  });
+}
+
+// ========================================
+// PAD LAYOUT
+// ========================================
+function updatePadLayout() {
+  renderPads();
+}
+
+// ========================================
+// TIKTOK HAND GESTURE CHORD DETECTION
+// ========================================
+const GESTURE_DEFINITIONS = [
+  { id: '1', name: '1 Jari (Telunjuk)', icon: '☝️', defaultChord: 'C' },
+  { id: '2', name: '2 Jari (Peace)', icon: '✌️', defaultChord: 'G' },
+  { id: '3', name: '3 Jari', icon: '🤟', defaultChord: 'Am' },
+  { id: '4', name: '4 Jari', icon: '🖖', defaultChord: 'F' },
+  { id: '5', name: '5 Jari (Telapak)', icon: '🖐️', defaultChord: 'Em' },
+  { id: 'rock', name: 'Rock / Metal', icon: '🤘', defaultChord: 'Dm' },
+  { id: 'thumb', name: 'Jempol', icon: '👍', defaultChord: 'C7' },
+  { id: 'fist', name: 'Kepalan (Mute)', icon: '✊', defaultChord: 'MUTE', isMute: true }
+];
+
+let gestureMappings = {
+  '1': 'C',
+  '2': 'G',
+  '3': 'Am',
+  '4': 'F',
+  '5': 'Em',
+  'rock': 'Dm',
+  'thumb': 'C7',
+  'fist': 'MUTE'
+};
+
+let gestureCamActive = false;
+let gestureVideoEl = null;
+let gestureCanvasEl = null;
+let gestureCtx = null;
+let gestureStream = null;
+let handsInstance = null;
+let gestureAnimationId = null;
+let cameraFacing = 'user';
+let currentActiveGesture = null;
+const activeGestureSoundId = 'gesture_sound_active';
+let gestureSensitivity = 7;
+let pendingGesture = null;
+let pendingGestureCount = 0;
+let frameCounter = 0;
+let lastFpsUpdateTime = performance.now();
+let lastRightHandY = 0;
+let lastStrumTriggerTime = 0;
+
+function initGestureCards() {
+  const container = document.getElementById('gestureCardsContainer');
+  if (!container) return;
+
+  const saved = localStorage.getItem('chordpad-gesture-mappings');
+  if (saved) {
+    try { gestureMappings = { ...gestureMappings, ...JSON.parse(saved) }; } catch(e) {}
+  }
+
+  const chordOptionsHtml = ALL_CHORDS.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+
+  container.innerHTML = GESTURE_DEFINITIONS.map(def => {
+    if (def.isMute) {
+      return `
+        <div class="gesture-card" id="gestureCard-${def.id}" style="opacity:0.85;">
+          <div class="gesture-card-label">
+            <span>${def.icon}</span> <span>${def.name}</span>
+          </div>
+          <div style="font-size:0.75em;color:var(--danger);font-weight:700;padding:5px 0;">🔇 MUTE / STOP</div>
+        </div>
+      `;
+    }
+
+    const currentChord = gestureMappings[def.id] || def.defaultChord;
+    return `
+      <div class="gesture-card" id="gestureCard-${def.id}">
+        <div class="gesture-card-label">
+          <span>${def.icon}</span> <span>${def.name}</span>
+        </div>
+        <select onchange="updateGestureChord('${def.id}', this.value)">
+          ${chordOptionsHtml}
+        </select>
+      </div>
+    `;
+  }).join('');
+
+  GESTURE_DEFINITIONS.forEach(def => {
+    if (!def.isMute) {
+      const select = document.querySelector(`#gestureCard-${def.id} select`);
+      if (select) select.value = gestureMappings[def.id] || def.defaultChord;
+    }
+  });
+}
+
+function updateGestureChord(gestureId, chordName) {
+  gestureMappings[gestureId] = chordName;
+  localStorage.setItem('chordpad-gesture-mappings', JSON.stringify(gestureMappings));
+}
+
+function resetGestureMappingsToPads() {
+  const padChords = pads.map(p => p.name);
+  if (padChords.length >= 1) gestureMappings['1'] = padChords[0];
+  if (padChords.length >= 2) gestureMappings['2'] = padChords[1];
+  if (padChords.length >= 3) gestureMappings['3'] = padChords[2];
+  if (padChords.length >= 4) gestureMappings['4'] = padChords[3];
+  if (padChords.length >= 5) gestureMappings['5'] = padChords[4];
+  if (padChords.length >= 6) gestureMappings['6'] = padChords[5];
+  if (padChords.length >= 7) gestureMappings['rock'] = padChords[6];
+  if (padChords.length >= 8) gestureMappings['thumb'] = padChords[7];
+
+  localStorage.setItem('chordpad-gesture-mappings', JSON.stringify(gestureMappings));
+  initGestureCards();
+
+  const statusInfo = document.getElementById('statusInfo');
+  if (statusInfo) statusInfo.textContent = 'Chord gesture berhasil disinkronkan dengan Pads!';
+}
+
+function updateGestureSensitivity(val) {
+  gestureSensitivity = parseInt(val) || 7;
+}
+
+function updateGestureMode() {
+  const mode = document.getElementById('gesturePlayMode')?.value || 'single';
+  const strumBar = document.getElementById('airGuitarStrumBar');
+  if (strumBar) {
+    strumBar.style.display = mode === 'airguitar' ? 'flex' : 'none';
+  }
+}
+
+async function toggleGestureCam() {
+  const drawer = document.getElementById('gestureStudio');
+  const btn = document.getElementById('gestureCamBtn');
+  const btnText = document.getElementById('gestureBtnText');
+
+  gestureCamActive = !gestureCamActive;
+
+  if (gestureCamActive) {
+    initAudio();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+
+    drawer.style.display = 'block';
+    if (btn) {
+      btn.style.boxShadow = '0 0 18px rgba(76,175,80,0.6)';
+      btn.style.border = '1.5px solid var(--success)';
+    }
+    if (btnText) btnText.textContent = 'TikTok Cam: ON';
+
+    initGestureCards();
+    updateGestureMode();
+    await startGestureCamera();
+  } else {
+    drawer.style.display = 'none';
+    if (btn) {
+      btn.style.boxShadow = '0 0 14px rgba(255,0,85,0.35)';
+      btn.style.border = 'none';
+    }
+    if (btnText) btnText.textContent = 'TikTok Cam: OFF';
+
+    stopGestureCamera();
+    stopGestureChord();
+  }
+}
+
+async function startGestureCamera() {
+  gestureVideoEl = document.getElementById('gestureVideo');
+  gestureCanvasEl = document.getElementById('gestureCanvas');
+  if (!gestureCanvasEl || !gestureVideoEl) return;
+  gestureCtx = gestureCanvasEl.getContext('2d');
+
+  const statusPill = document.getElementById('gestureStatusPill');
+  if (statusPill) statusPill.textContent = 'Menghubungkan Kamera...';
+
+  try {
+    const constraints = {
+      video: {
+        facingMode: cameraFacing,
+        width: { ideal: 640 },
+        height: { ideal: 480 }
+      },
+      audio: false
+    };
+
+    gestureStream = await navigator.mediaDevices.getUserMedia(constraints);
+    gestureVideoEl.srcObject = gestureStream;
+    await gestureVideoEl.play();
+
+    if (statusPill) statusPill.textContent = 'Memuat AI Hand Pose...';
+
+    initMediaPipeHands();
+  } catch (err) {
+    console.error('Camera access error:', err);
+    if (statusPill) {
+      statusPill.innerHTML = '<span style="color:var(--danger)">Gagal Akses Kamera</span>';
+    }
+    alert('Tidak dapat mengakses webcam. Pastikan izin kamera telah diberikan di browser.');
+  }
+}
+
+function stopGestureCamera() {
+  if (gestureAnimationId) {
+    cancelAnimationFrame(gestureAnimationId);
+    gestureAnimationId = null;
+  }
+  if (gestureStream) {
+    gestureStream.getTracks().forEach(track => track.stop());
+    gestureStream = null;
+  }
+  if (gestureVideoEl) {
+    gestureVideoEl.srcObject = null;
+  }
+  if (gestureCtx && gestureCanvasEl) {
+    gestureCtx.clearRect(0, 0, gestureCanvasEl.width, gestureCanvasEl.height);
+  }
+  const statusPill = document.getElementById('gestureStatusPill');
+  if (statusPill) statusPill.textContent = 'Kamera Dimatikan';
+}
+
+function switchCameraFacing() {
+  cameraFacing = cameraFacing === 'user' ? 'environment' : 'user';
+  if (gestureCamActive) {
+    stopGestureCamera();
+    startGestureCamera();
+  }
+}
+
+function initMediaPipeHands() {
+  const statusPill = document.getElementById('gestureStatusPill');
+
+  if (typeof Hands === 'undefined') {
+    if (statusPill) statusPill.textContent = 'Memuat modul AI online...';
+    setTimeout(() => {
+      if (typeof Hands !== 'undefined') {
+        initMediaPipeHands();
+      } else {
+        if (statusPill) statusPill.textContent = 'Kamera aktif (Menunggu model)';
+        runFallbackCameraLoop();
+      }
+    }, 1000);
+    return;
+  }
+
+  try {
+    handsInstance = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+
+    handsInstance.setOptions({
+      maxNumHands: 2,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.55,
+      minTrackingConfidence: 0.5
+    });
+
+    handsInstance.onResults(onMediaPipeResults);
+
+    if (statusPill) {
+      statusPill.innerHTML = '<span class="status-dot" style="background:var(--success)"></span> AI Vision Aktif';
+    }
+
+    startMediaPipeLoop();
+  } catch (e) {
+    console.warn('MediaPipe init error:', e);
+    runFallbackCameraLoop();
+  }
+}
+
+let isProcessingFrame = false;
+function startMediaPipeLoop() {
+  if (!gestureCamActive) return;
+
+  const processLoop = async () => {
+    if (!gestureCamActive || !gestureVideoEl) return;
+
+    if (gestureVideoEl.readyState >= 2 && !isProcessingFrame && handsInstance) {
+      isProcessingFrame = true;
+      try {
+        await handsInstance.send({ image: gestureVideoEl });
+      } catch (err) {
+        console.warn('Frame processing error:', err);
+      }
+      isProcessingFrame = false;
+    }
+
+    gestureAnimationId = requestAnimationFrame(processLoop);
+  };
+
+  gestureAnimationId = requestAnimationFrame(processLoop);
+}
+
+function runFallbackCameraLoop() {
+  if (!gestureCamActive) return;
+  const loop = () => {
+    if (!gestureCamActive) return;
+    if (gestureCanvasEl && gestureVideoEl && gestureVideoEl.readyState >= 2) {
+      gestureCanvasEl.width = gestureVideoEl.videoWidth || 640;
+      gestureCanvasEl.height = gestureVideoEl.videoHeight || 480;
+      gestureCtx.drawImage(gestureVideoEl, 0, 0, gestureCanvasEl.width, gestureCanvasEl.height);
+    }
+    gestureAnimationId = requestAnimationFrame(loop);
+  };
+  gestureAnimationId = requestAnimationFrame(loop);
+}
+
+function onMediaPipeResults(results) {
+  if (!gestureCanvasEl || !gestureCtx || !gestureCamActive) return;
+
+  const w = gestureCanvasEl.width = gestureVideoEl.videoWidth || 640;
+  const h = gestureCanvasEl.height = gestureVideoEl.videoHeight || 480;
+
+  gestureCtx.clearRect(0, 0, w, h);
+
+  frameCounter++;
+  const now = performance.now();
+  if (now - lastFpsUpdateTime >= 1000) {
+    const fps = Math.round((frameCounter * 1000) / (now - lastFpsUpdateTime));
+    const fpsEl = document.getElementById('fpsCounterVal');
+    if (fpsEl) fpsEl.textContent = `${fps} FPS`;
+    frameCounter = 0;
+    lastFpsUpdateTime = now;
+  }
+
+  const handsCount = results.multiHandLandmarks ? results.multiHandLandmarks.length : 0;
+  const handsBadge = document.getElementById('handsCountBadge');
+  if (handsBadge) {
+    handsBadge.textContent = handsCount === 1 ? '1 Tangan' : handsCount === 2 ? '2 Tangan (Air Guitar)' : '0 Tangan';
+  }
+
+  if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+    handleNoHand();
+    return;
+  }
+
+  results.multiHandLandmarks.forEach((landmarks, handIdx) => {
+    drawHandSkeleton(landmarks, w, h, handIdx);
+  });
+
+  const mode = document.getElementById('gesturePlayMode')?.value || 'single';
+
+  if (mode === 'airguitar' && results.multiHandLandmarks.length >= 2) {
+    const handA = results.multiHandLandmarks[0];
+    const handB = results.multiHandLandmarks[1];
+
+    let chordHand = handA[0].x < handB[0].x ? handA : handB;
+    let strumHand = handA[0].x < handB[0].x ? handB : handA;
+
+    const chordAnalysis = analyzeHand(chordHand);
+    const strumAnalysis = analyzeHand(strumHand);
+
+    handleAirGuitarMode(chordAnalysis, strumAnalysis);
+  } else {
+    const analysis = analyzeHand(results.multiHandLandmarks[0]);
+    handleSingleHandMode(analysis);
+  }
+}
+
+function drawHandSkeleton(landmarks, width, height, handIdx) {
+  const connections = [
+    [0,1],[1,2],[2,3],[3,4],
+    [0,5],[5,6],[6,7],[7,8],
+    [0,9],[9,10],[10,11],[11,12],
+    [0,13],[13,14],[14,15],[15,16],
+    [0,17],[17,18],[18,19],[19,20],
+    [5,9],[9,13],[13,17]
+  ];
+
+  const primaryColor = handIdx === 0 ? '#00e5ff' : '#ff0077';
+  const glowColor = handIdx === 0 ? 'rgba(0, 229, 255, 0.4)' : 'rgba(255, 0, 119, 0.4)';
+
+  gestureCtx.lineWidth = 3;
+  gestureCtx.strokeStyle = primaryColor;
+  gestureCtx.shadowColor = glowColor;
+  gestureCtx.shadowBlur = 8;
+
+  connections.forEach(([i, j]) => {
+    const p1 = landmarks[i];
+    const p2 = landmarks[j];
+    gestureCtx.beginPath();
+    gestureCtx.moveTo(p1.x * width, p1.y * height);
+    gestureCtx.lineTo(p2.x * width, p2.y * height);
+    gestureCtx.stroke();
+  });
+
+  landmarks.forEach((p, i) => {
+    const x = p.x * width;
+    const y = p.y * height;
+    const isTip = [4, 8, 12, 16, 20].includes(i);
+
+    gestureCtx.beginPath();
+    gestureCtx.arc(x, y, isTip ? 6 : 3.5, 0, 2 * Math.PI);
+    gestureCtx.fillStyle = isTip ? '#ffffff' : primaryColor;
+    gestureCtx.shadowColor = '#ffffff';
+    gestureCtx.shadowBlur = isTip ? 12 : 4;
+    gestureCtx.fill();
+  });
+
+  gestureCtx.shadowBlur = 0;
+}
+
+function analyzeHand(landmarks) {
+  const wrist = landmarks[0];
+
+  const isExtended = (tipIdx, pipIdx) => {
+    const dTip = Math.hypot(landmarks[tipIdx].x - wrist.x, landmarks[tipIdx].y - wrist.y);
+    const dPip = Math.hypot(landmarks[pipIdx].x - wrist.x, landmarks[pipIdx].y - wrist.y);
+    const ratio = 1.05 + (10 - gestureSensitivity) * 0.02;
+    return dTip > dPip * ratio;
+  };
+
+  const pinkyMcp = landmarks[17];
+  const dThumbTip = Math.hypot(landmarks[4].x - pinkyMcp.x, landmarks[4].y - pinkyMcp.y);
+  const dThumbIp = Math.hypot(landmarks[3].x - pinkyMcp.x, landmarks[3].y - pinkyMcp.y);
+  const thumbExtended = dThumbTip > dThumbIp * 1.15;
+
+  const indexExtended = isExtended(8, 6);
+  const middleExtended = isExtended(12, 10);
+  const ringExtended = isExtended(16, 14);
+  const pinkyExtended = isExtended(20, 18);
+
+  const pinchDist = Math.hypot(landmarks[4].x - landmarks[8].x, landmarks[4].y - landmarks[8].y);
+  const isPinch = pinchDist < 0.08;
+
+  const extendedCount = (thumbExtended ? 1 : 0) +
+                        (indexExtended ? 1 : 0) +
+                        (middleExtended ? 1 : 0) +
+                        (ringExtended ? 1 : 0) +
+                        (pinkyExtended ? 1 : 0);
+
+  let gesture = 'unknown';
+  if (extendedCount === 0 || (!indexExtended && !middleExtended && !ringExtended && !pinkyExtended && !thumbExtended)) {
+    gesture = 'fist';
+  } else if (indexExtended && !middleExtended && !ringExtended && !pinkyExtended && !thumbExtended) {
+    gesture = '1';
+  } else if (indexExtended && middleExtended && !ringExtended && !pinkyExtended && !thumbExtended) {
+    gesture = '2';
+  } else if (indexExtended && middleExtended && ringExtended && !pinkyExtended && !thumbExtended) {
+    gesture = '3';
+  } else if (thumbExtended && indexExtended && middleExtended && !ringExtended && !pinkyExtended) {
+    gesture = '3';
+  } else if (indexExtended && middleExtended && ringExtended && pinkyExtended && !thumbExtended) {
+    gesture = '4';
+  } else if (thumbExtended && indexExtended && middleExtended && ringExtended && pinkyExtended) {
+    gesture = '5';
+  } else if (indexExtended && pinkyExtended && !middleExtended && !ringExtended) {
+    gesture = 'rock';
+  } else if (thumbExtended && !indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
+    gesture = 'thumb';
+  } else {
+    if (extendedCount >= 1 && extendedCount <= 5) {
+      gesture = String(extendedCount);
+    }
+  }
+
+  return {
+    gesture,
+    extendedCount,
+    thumb: thumbExtended,
+    index: indexExtended,
+    middle: middleExtended,
+    ring: ringExtended,
+    pinky: pinkyExtended,
+    isPinch,
+    wrist,
+    indexTip: landmarks[8]
+  };
+}
+
+function handleSingleHandMode(analysis) {
+  const rawGesture = analysis.gesture;
+
+  if (rawGesture === pendingGesture) {
+    pendingGestureCount++;
+  } else {
+    pendingGesture = rawGesture;
+    pendingGestureCount = 1;
+  }
+
+  if (pendingGestureCount < 2) return;
+
+  const stableGesture = pendingGesture;
+  if (stableGesture === currentActiveGesture) return;
+
+  currentActiveGesture = stableGesture;
+
+  document.querySelectorAll('.gesture-card').forEach(c => c.classList.remove('active-match'));
+  const activeCard = document.getElementById(`gestureCard-${stableGesture}`);
+  if (activeCard) activeCard.classList.add('active-match');
+
+  const hudName = document.getElementById('hudGestureName');
+  const hudChord = document.getElementById('hudChordDisplay');
+
+  const def = GESTURE_DEFINITIONS.find(d => d.id === stableGesture);
+  const chordName = gestureMappings[stableGesture];
+
+  if (stableGesture === 'fist' || !chordName || chordName === 'MUTE') {
+    if (hudName) hudName.textContent = '✊ Kepalan Tangan (Mute)';
+    if (hudChord) hudChord.textContent = 'STOP';
+    stopGestureChord();
+    return;
+  }
+
+  const icon = def ? def.icon : '🖐️';
+  const name = def ? def.name : `${stableGesture} Jari`;
+
+  if (hudName) hudName.textContent = `${icon} ${name}`;
+  if (hudChord) hudChord.textContent = chordName;
+
+  const chordData = ALL_CHORDS.find(c => c.name.toLowerCase() === chordName.toLowerCase());
+  if (!chordData) return;
+
+  const sustainBehavior = document.getElementById('gestureSustainBehavior')?.value || 'sustain';
+
+  if (sustainBehavior === 'strum') {
+    playChordDirect(chordData, 'strumDown', 350);
+  } else if (sustainBehavior === 'arpeggio') {
+    playChordDirect(chordData, 'arpUp', 400);
+  } else {
+    triggerSustainedGestureChord(chordData);
+  }
+}
+
+function handleAirGuitarMode(chordHand, strumHand) {
+  const chordGesture = chordHand.gesture;
+  const chordName = gestureMappings[chordGesture] || 'C';
+
+  const leftLabel = document.getElementById('leftHandChordLabel');
+  if (leftLabel) leftLabel.textContent = `${chordName} (${chordGesture} Jari)`;
+
+  const rightLabel = document.getElementById('rightHandActionLabel');
+  const flashBadge = document.getElementById('strumFlashBadge');
+
+  const now = performance.now();
+  const currentY = strumHand.indexTip ? strumHand.indexTip.y : strumHand.wrist.y;
+  const dy = currentY - lastRightHandY;
+  lastRightHandY = currentY;
+
+  const isRapidDown = dy > 0.04;
+  const isRapidUp = dy < -0.04;
+  const isPinch = strumHand.isPinch;
+
+  let shouldStrum = false;
+  let strumDirection = 'strumDown';
+
+  if (isRapidDown && (now - lastStrumTriggerTime > 180)) {
+    shouldStrum = true;
+    strumDirection = 'strumDown';
+    lastStrumTriggerTime = now;
+  } else if (isRapidUp && (now - lastStrumTriggerTime > 180)) {
+    shouldStrum = true;
+    strumDirection = 'strumUp';
+    lastStrumTriggerTime = now;
+  } else if (isPinch && (now - lastStrumTriggerTime > 250)) {
+    shouldStrum = true;
+    strumDirection = 'pick';
+    lastStrumTriggerTime = now;
+  }
+
+  if (shouldStrum) {
+    const chordData = ALL_CHORDS.find(c => c.name.toLowerCase() === chordName.toLowerCase());
+    if (chordData) {
+      playChordDirect(chordData, strumDirection, 350);
+      animateGuitarStrings();
+
+      if (rightLabel) rightLabel.textContent = strumDirection === 'strumDown' ? '⚡ Strum Down!' : strumDirection === 'strumUp' ? '⚡ Strum Up!' : '👌 Pinch Pick!';
+      if (flashBadge) {
+        flashBadge.textContent = 'STRUM!';
+        flashBadge.style.background = 'var(--accent)';
+        flashBadge.style.color = '#fff';
+        setTimeout(() => {
+          flashBadge.textContent = 'IDLE';
+          flashBadge.style.background = 'var(--surface)';
+          flashBadge.style.color = 'var(--text2)';
+        }, 150);
+      }
+    }
+  } else {
+    if (rightLabel && (now - lastStrumTriggerTime > 300)) {
+      rightLabel.textContent = 'Siap Strum';
+    }
+  }
+}
+
+function handleNoHand() {
+  if (currentActiveGesture !== null) {
+    currentActiveGesture = null;
+    pendingGesture = null;
+    pendingGestureCount = 0;
+
+    document.querySelectorAll('.gesture-card').forEach(c => c.classList.remove('active-match'));
+    const hudName = document.getElementById('hudGestureName');
+    const hudChord = document.getElementById('hudChordDisplay');
+    if (hudName) hudName.textContent = 'Menunggu Tangan...';
+    if (hudChord) hudChord.textContent = '—';
+
+    stopGestureChord();
+  }
+}
+
+function triggerSustainedGestureChord(chordData) {
+  initAudio();
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+
+  stopGestureChord();
+
+  const engine = document.getElementById('synthEngine').value;
+  const octave = parseInt(document.getElementById('octave').value) || 3;
+  const freqs = getChordFrequencies(chordData.root, chordData.intervals, octave);
+
+  const voices = [];
+  const outputMix = audioCtx.createGain();
+  outputMix.gain.setValueAtTime(1, audioCtx.currentTime);
+
+  freqs.forEach(freq => {
+    const voice = createSynthVoice(freq, engine);
+    voice.output.connect(outputMix);
+    voices.push(voice);
+  });
+
+  outputMix.connect(masterGain);
+  if (window._reverbSend) outputMix.connect(window._reverbSend);
+  if (delayNode) outputMix.connect(delayNode);
+
+  activeSounds[activeGestureSoundId] = { voices, outputMix };
+
+  const matchingPad = pads.find(p => p.name.toLowerCase() === chordData.name.toLowerCase());
+  if (matchingPad) {
+    const padEl = document.querySelector(`[data-pad-id="${matchingPad.id}"]`);
+    if (padEl) padEl.classList.add('playing');
+  }
+
+  const statusInfo = document.getElementById('statusInfo');
+  if (statusInfo) statusInfo.textContent = `Gestur Aktif: ${chordData.name}`;
+}
+
+function stopGestureChord() {
+  if (activeSounds[activeGestureSoundId]) {
+    stopChord(activeGestureSoundId);
+  }
+  document.querySelectorAll('.pad.playing').forEach(p => p.classList.remove('playing'));
+}
+
+// ========================================
+// MOBILE NAVIGATION & RESPONSIVE TABS
+// ========================================
+function switchMobileTab(tab) {
+  document.querySelectorAll('.mobile-nav-item').forEach(btn => btn.classList.remove('active'));
+  const activeBtn = document.getElementById('mTab-' + tab);
+  if (activeBtn) activeBtn.classList.add('active');
+
+  const padArea = document.querySelector('.pad-area');
+  const sidePanel = document.getElementById('sidePanel');
+  const gestureStudio = document.getElementById('gestureStudio');
+
+  if (tab === 'pads') {
+    if (padArea) padArea.style.display = 'block';
+    if (sidePanel) {
+      sidePanel.classList.remove('mobile-visible');
+      sidePanel.removeAttribute('data-mobile-view');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else if (tab === 'cam') {
+    if (padArea) padArea.style.display = 'block';
+    if (sidePanel) {
+      sidePanel.classList.remove('mobile-visible');
+      sidePanel.removeAttribute('data-mobile-view');
+    }
+    if (gestureStudio) {
+      if (gestureStudio.style.display === 'none') {
+        toggleGestureCam();
+      }
+      gestureStudio.scrollIntoView({ behavior: 'smooth' });
+    }
+  } else if (tab === 'guitar') {
+    if (padArea) padArea.style.display = 'none';
+    if (sidePanel) {
+      sidePanel.classList.add('mobile-visible');
+      sidePanel.setAttribute('data-mobile-view', 'guitar');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else if (tab === 'bpm') {
+    if (padArea) padArea.style.display = 'none';
+    if (sidePanel) {
+      sidePanel.classList.add('mobile-visible');
+      sidePanel.setAttribute('data-mobile-view', 'bpm');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else if (tab === 'menu') {
+    openSettingsModal();
+    setTimeout(() => {
+      document.querySelectorAll('.mobile-nav-item').forEach(btn => btn.classList.remove('active'));
+      const padsBtn = document.getElementById('mTab-pads');
+      if (padsBtn) padsBtn.classList.add('active');
+    }, 300);
+  }
+}
+
+// Ensure layout reverts cleanly if device orientation or viewport switches to desktop
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 768) {
+    const padArea = document.querySelector('.pad-area');
+    const sidePanel = document.getElementById('sidePanel');
+    if (padArea) padArea.style.display = '';
+    if (sidePanel) {
+      sidePanel.classList.remove('mobile-visible');
+      sidePanel.removeAttribute('data-mobile-view');
+    }
+  }
+});
+
+// Mobile Safari/Chrome AudioContext unlock on first touch anywhere
+window.addEventListener('touchstart', () => {
+  if (!audioCtx || audioCtx.state === 'suspended') {
+    resumeAudioNow();
+  }
+}, { passive: true, once: true });
+
+// ========================================
+// INIT
+// ========================================
+document.addEventListener('DOMContentLoaded', () => {
+  initPads();
+  updateBassSteps(1);
+  initGestureCards();
+
+  // Initialize audio on first user interaction
+  document.addEventListener('click', () => initAudio(), { once: true });
+  document.addEventListener('keydown', () => initAudio(), { once: true });
+  document.addEventListener('touchstart', () => initAudio(), { once: true });
+});
+
+// Prevent context menu on pads
+document.addEventListener('contextmenu', (e) => {
+  if (e.target.closest('.pad')) e.preventDefault();
+});
+</script>
+</body>
+</html>
